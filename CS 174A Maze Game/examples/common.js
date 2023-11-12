@@ -960,8 +960,12 @@ const Movement_Controls = defs.Movement_Controls =
                     this.matrix().post_multiply(Mat4.rotation(+velocity, i, 1 - i, 0));
                     this.inverse().pre_multiply(Mat4.rotation(-velocity, i, 1 - i, 0));
                 }
+            // Obtain Vector corresponding to direction of matrix, in order to translate up/down movement to strictly horizontal
+            let directionVector = this.matrix().times(vec3(0, 0, 1));
+
             this.matrix().post_multiply(Mat4.rotation(-.1 * this.roll, 0, 0, 1));
             this.inverse().pre_multiply(Mat4.rotation(+.1 * this.roll, 0, 0, 1));
+
             // Now apply translation movement of the camera, in the newest local coordinate frame.
             this.matrix().post_multiply(Mat4.translation(...this.thrust.times(-meters_per_frame)));
             this.inverse().pre_multiply(Mat4.translation(...this.thrust.times(+meters_per_frame)));
