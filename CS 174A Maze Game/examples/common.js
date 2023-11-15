@@ -814,10 +814,13 @@ const Movement_Controls = defs.Movement_Controls =
         // button controls to help you explore what's in it.
         constructor() {
             super();
+            //sensitivity
+            const sensitivity = "0.0005";
+            //const sensitivity_slider = 10;
             const data_members = {
                 roll: 0, look_around_locked: true,
                 thrust: vec3(0, 0, 0), pos: vec3(0, 0, 0), z_axis: vec3(0, 0, 0),
-                radians_per_frame: 1 / 200, meters_per_frame: 20, speed_multiplier: 1
+                radians_per_frame: 1 / 200, meters_per_frame: 20, speed_multiplier: 1, sensitivity_multiplier: 10
             };
             Object.assign(this, data_members);
 
@@ -849,15 +852,21 @@ const Movement_Controls = defs.Movement_Controls =
             const mouse_position = (e) =>
                 vec(e.clientX - this.savedCenter[0], e.clientY - this.savedCenter[1]);
             // Set up mouse response.  The last one stops us from reacting if the mouse leaves the canvas:
+
             document.addEventListener("mouseup", e => {
                 //this.mouse.anchor = undefined;
                 this.look_around_locked ^= 1
             });
+
+            // added lock in screen on click
             canvas.addEventListener("mousedown", e => {
                 e.preventDefault();
-                //this.mouse.anchor = mouse_position(e);
-                this.look_around_locked ^= 1;
+                this.look_around_locked = true;
+                document.addEventListener("mousemove", this.handle_mousemove.bind(this));
+                canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock || canvas.webkitRequestPointerLock;
+                canvas.requestPointerLock();
             });
+
             canvas.addEventListener("mouseenter", e => {
                 this.savedCenter = vec(e.clientX, e.clientY)
             });
@@ -868,6 +877,22 @@ const Movement_Controls = defs.Movement_Controls =
             canvas.addEventListener("mouseout", e => {
                 if (!this.mouse.anchor) this.mouse.from_center.scale_by(0)
             });
+
+        }
+
+        
+        // added looking around with mouse
+        handle_mousemove(event) {
+            this.sensitivity = 0.0005 * (parseInt(this.sensitivity_slider.value)/10)
+            const delta_x = event.movementX * this.sensitivity;
+            const delta_y = event.movementY * this.sensitivity;
+
+            // update camera
+            this.matrix().post_multiply(Mat4.rotation(-delta_x, 0, 1, 0));
+            this.inverse().pre_multiply(Mat4.rotation(delta_x, 0, 1, 0));
+        
+            this.matrix().post_multiply(Mat4.rotation(-delta_y, 1, 0, 0));
+            this.inverse().pre_multiply(Mat4.rotation(delta_y, 1, 0, 0));
         }
 
         show_explanation(document_element) {
@@ -876,7 +901,9 @@ const Movement_Controls = defs.Movement_Controls =
         make_control_panel() {
             // make_control_panel(): Sets up a panel of interactive HTML elements, including
             // buttons with key bindings for affecting this scene, and live info readouts.
+            
             this.control_panel.innerHTML += "Click and drag the scene to spin your viewpoint around it.<br>";
+            
             this.live_string(box => box.textContent = "- Position: " + this.pos[0].toFixed(2) + ", " + this.pos[1].toFixed(2)
                 + ", " + this.pos[2].toFixed(2));
             this.new_line();
@@ -895,6 +922,7 @@ const Movement_Controls = defs.Movement_Controls =
             this.new_line();
             this.key_triggered_button("Down", ["z"], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0);
 
+            
             const speed_controls = this.control_panel.appendChild(document.createElement("span"));
             speed_controls.style.margin = "30px";
             this.key_triggered_button("-", ["o"], () =>
@@ -905,6 +933,26 @@ const Movement_Controls = defs.Movement_Controls =
             this.key_triggered_button("+", ["p"], () =>
                 this.speed_multiplier *= 1.2, undefined, undefined, undefined, speed_controls);
             this.new_line();
+
+
+            // added sensitivity slider
+            const sensitivity_controls = this.control_panel.appendChild(document.createElement("span"));
+            sensitivity_controls.style.margin = "30px";
+            this.sensitivity_slider = document.createElement("input");
+            this.sensitivity_slider.type = "range";
+            this.sensitivity_slider.min = "1";
+            this.sensitivity_slider.max = "20";
+            this.sensitivity_slider.step = "1";
+            this.sensitivity_slider.value = "10"; 
+            //this.sensitivity_slider.addEventListener("input", () => this.handle_mousemove()); 
+            this.live_string(box => {
+                box.textContent = "Sensitivity: " + this.sensitivity_slider.value;
+            }, sensitivity_controls);
+            sensitivity_controls.appendChild(this.sensitivity_slider);
+            this.new_line();
+            this.new_line();
+            
+
             this.key_triggered_button("Roll left", [","], () => this.roll = 1, undefined, () => this.roll = 0);
             this.key_triggered_button("Roll right", ["."], () => this.roll = -1, undefined, () => this.roll = 0);
             this.new_line();
@@ -997,6 +1045,7 @@ const Movement_Controls = defs.Movement_Controls =
             const m = this.speed_multiplier * this.meters_per_frame,
                 r = this.speed_multiplier * this.radians_per_frame;
 
+
             if (this.will_take_over_graphics_state) {
                 this.reset(graphics_state);
                 this.will_take_over_graphics_state = false;
@@ -1015,6 +1064,7 @@ const Movement_Controls = defs.Movement_Controls =
             this.pos = this.inverse().times(vec4(0, 0, 0, 1));
             this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
         }
+
     }
 
 
