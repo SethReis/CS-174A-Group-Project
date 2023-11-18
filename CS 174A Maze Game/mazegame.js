@@ -2,26 +2,10 @@ import {defs, tiny} from './examples/common.js';
 import { Maze } from './mazegen.js';
 
 const {
-    Vector, Vector3, vec, vec3, vec4, color, hex_color, Matrix, Mat4, Light, Shape, Material, Scene,
+    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
 
-class Cube extends Shape {
-    constructor() {
-        super("position", "normal",);
-        // Loop 3 times (for each axis), and inside loop twice (for opposing cube sides):
-        this.arrays.position = Vector3.cast(
-            [-1, -1, -1], [1, -1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, -1], [-1, 1, -1], [1, 1, 1], [-1, 1, 1],
-            [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1], [1, -1, 1], [1, -1, -1], [1, 1, 1], [1, 1, -1],
-            [-1, -1, 1], [1, -1, 1], [-1, 1, 1], [1, 1, 1], [1, -1, -1], [-1, -1, -1], [1, 1, -1], [-1, 1, -1]);
-        this.arrays.normal = Vector3.cast(
-            [0, -1, 0], [0, -1, 0], [0, -1, 0], [0, -1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0],
-            [-1, 0, 0], [-1, 0, 0], [-1, 0, 0], [-1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-            [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, -1], [0, 0, -1], [0, 0, -1], [0, 0, -1]);
-        // Arrange the vertices into a square shape in texture space too:
-        this.indices.push(0, 1, 2, 1, 3, 2, 4, 5, 6, 5, 7, 6, 8, 9, 10, 9, 11, 10, 12, 13,
-            14, 13, 15, 14, 16, 17, 18, 17, 19, 18, 20, 21, 22, 21, 23, 22);
-    }
-}
+const {Cube, Textured_Phong} = defs
 
 class Floor extends Shape {
     constructor() {
@@ -42,50 +26,6 @@ class Floor extends Shape {
     }
 }
 
-
-class Cube_Outline extends Shape {
-    constructor() {
-        super("position", "color");
-        // Loop 3 times (for each axis), and inside loop twice (for opposing cube sides):
-        this.arrays.position = Vector3.cast(
-            [-1, -1, -1], [1, -1, -1],
-            [1, -1, -1], [1, -1, 1],
-            [1, -1, 1], [-1, -1, 1],
-            [-1, -1, 1], [-1, -1, -1],
-            [-1, 1, -1], [1, 1, -1],
-            [1, 1, -1], [1, 1, 1],
-            [1, 1, 1], [-1, 1, 1],
-            [-1, 1, 1], [-1, 1, -1],
-            [-1, -1, -1], [-1, 1, -1],
-            [1, -1, -1], [1, 1, -1],
-            [1, -1, 1], [1, 1, 1],
-            [-1, -1, 1], [-1, 1, 1]);
-
-        const white = color(1, 1, 1, 1)
-        for (let i = 0; i < 24; i++) {
-            this.arrays.color.push(white)
-        }
-
-        this.indices = false;
-    }
-}
-
-class Cube_Single_Strip extends Shape {
-    constructor() {
-        super("position", "normal");
-        this.arrays.position = Vector3.cast(
-            [-1, -1, -1], [1, -1, -1], [-1, -1, 1], [1, -1, 1],
-            [-1, 1, -1], [1, 1, -1], [-1, 1, 1], [1, 1, 1]);
-
-        this.arrays.normal = Vector3.cast(
-            [-1, -1, -1], [1, -1, -1], [-1, -1, 1], [1, -1, 1],
-            [-1, 1, -1], [1, 1, -1], [-1, 1, 1], [1, 1, 1]);
-
-        this.indices.push(0, 1, 2, 3, 7, 1, 5, 0, 4, 2, 6, 7, 4, 5);
-    }
-}
-
-
 class Base_Scene extends Scene {
     /**
      *  **Base_scene** is a Scene that can be added to any display canvas.
@@ -98,21 +38,30 @@ class Base_Scene extends Scene {
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
             'cube': new Cube(),
+            'outerwall': new Cube(),
             'floor': new Floor(),
-            'outline': new Cube_Outline(),
-            'strip' : new Cube_Single_Strip()
         };
 
         // *** Materials
         this.materials = {
             plastic: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
+            brickTexture: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/brickwall.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
+            concreteTexture: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
+            asphaltTexture: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/asphaltfloor.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
         };
-        // The white material and basic shader are used for drawing the outline.
-        this.white = new Material(new defs.Basic_Shader());
-
-        this.sitting_still = false;
-        this.outlining = false;
 
         this.colors_array = []
         for (let i = 0; i < 8; i++) {
@@ -128,7 +77,7 @@ class Base_Scene extends Scene {
         if (!context.scratchpad.controls) {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
             // Define the global camera and projection matrices, which are stored in program_state.
-            program_state.set_camera(Mat4.translation(5, -10, -30));
+            program_state.set_camera(Mat4.translation(-2.5, -5, -2.5));
         }
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, 1, 100);
@@ -151,8 +100,13 @@ export class MazeGame extends Base_Scene {
         this.dim_x = 10;
         this.dim_z = 10;
         this.wall_height = 5;
+        this.wall_length = 7;
         this.maze = new Maze(this.dim_x, this.dim_z);
         this.grid = this.maze.getGrid();
+
+        for (let i = 0; i < 24; i++) {
+            this.shapes.outerwall.arrays.texture_coord[i] = vec((i % 2) * this.wall_length, Math.floor(i / 2) % 2);
+        }
     }
     
     set_colors() {
@@ -162,15 +116,7 @@ export class MazeGame extends Base_Scene {
     }
 
     make_control_panel() {
-        // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-        this.key_triggered_button("Change Colors", ["c"], this.set_colors);
-        // Add a button for controlling the scene.
-        this.key_triggered_button("Outline", ["o"], () => {
-            this.outlining = !this.outlining
-        });
-        this.key_triggered_button("Sit still", ["m"], () => {
-            this.sitting_still = !this.sitting_still;
-        });
+        
     }
 
     draw_wall(context, program_state, model_transform, block_width, x, z) {
@@ -186,7 +132,7 @@ export class MazeGame extends Base_Scene {
             .times(Mat4.scale(block_width / 2, this.wall_height, block_width / 2));  // Scale the cube to fit in the cell
 
         // Draw the cube
-        this.shapes.cube.draw(context, program_state, cube_transform, this.materials.plastic.override({ color: color }));
+        this.shapes.cube.draw(context, program_state, cube_transform, this.materials.brickTexture);
     }
 
     draw_walls(context, program_state, model_transform, wall_length) {
@@ -211,22 +157,21 @@ export class MazeGame extends Base_Scene {
         let wall4 = Mat4.identity().times(Mat4.translation(horizontal_length/2 , this.wall_height, vertical_length + wall_length))
                                    .times(Mat4.rotation(rot, 0, 1, 0))
                                    .times(Mat4.scale(1, this.wall_height, horizontal_length/2))
-        this.shapes.cube.draw(context, program_state, wall1, this.materials.plastic.override({color:hex_color("#e8a87c")}));
-        this.shapes.cube.draw(context, program_state, wall2, this.materials.plastic.override({color:hex_color("#e8a87c")}));
-        this.shapes.cube.draw(context, program_state, wall3, this.materials.plastic.override({color:hex_color("#e8a87c")}));
-        this.shapes.cube.draw(context, program_state, wall4, this.materials.plastic.override({color:hex_color("#e8a87c")}));
+        this.shapes.outerwall.draw(context, program_state, wall1, this.materials.concreteTexture);
+        this.shapes.outerwall.draw(context, program_state, wall2, this.materials.concreteTexture);
+        this.shapes.outerwall.draw(context, program_state, wall3, this.materials.concreteTexture);
+        this.shapes.outerwall.draw(context, program_state, wall4, this.materials.concreteTexture);
     }
 
     display(context, program_state) {
         super.display(context, program_state);
         // since walls are bricks, this represents 7 x 7 x height blocks
-        const wall_length = 7;
         let model_transform = Mat4.identity();
         let floor_transform = Mat4.identity();
 
         const t = this.t = program_state.animation_time / 3000;
-        this.draw_walls(context, program_state, model_transform, wall_length);
-        this.draw_border(context, program_state, wall_length);
+        this.draw_walls(context, program_state, model_transform, this.wall_length);
+        this.draw_border(context, program_state, this.wall_length);
         this.shapes.floor.draw(context, program_state, floor_transform, this.materials.plastic.override({color:hex_color("#aaaaaa")}));
         // this.shapes.cube.draw(context, program_state, wall_transform, this.materials.plastic.override({color:hex_color("#aaaaaa")}));
     }
