@@ -5,26 +5,7 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
 
-const {Cube, Textured_Phong} = defs
-
-class Floor extends Shape {
-    constructor() {
-        super("position", "normal");
-
-        // Define the corners of a very large square
-        this.arrays.position = Vector3.cast(
-            [-1000, 0, 1000], [1000, 0, 1000], [-1000, 0, -1000], [1000, 0, -1000]
-        );
-
-        // All normals point upwards as it's a flat floor
-        this.arrays.normal = Vector3.cast(
-            [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0]
-        );
-
-        // Two triangles to form a square
-        this.indices.push(0, 1, 2, 1, 3, 2);
-    }
-}
+const {Cube, Square, Textured_Phong} = defs
 
 class Base_Scene extends Scene {
     /**
@@ -39,7 +20,7 @@ class Base_Scene extends Scene {
         this.shapes = {
             'cube': new Cube(),
             'outerwall': new Cube(),
-            'floor': new Floor(),
+            'floor': new Square(),
         };
 
         // *** Materials
@@ -106,6 +87,7 @@ export class MazeGame extends Base_Scene {
 
         for (let i = 0; i < 24; i++) {
             this.shapes.outerwall.arrays.texture_coord[i] = vec((i % 2) * this.wall_length, Math.floor(i / 2) % 2);
+            this.shapes.floor.arrays.texture_coord[i] = vec((i % 2) * 500, (Math.floor(i / 2) % 2) * 500);
         }
     }
     
@@ -172,7 +154,9 @@ export class MazeGame extends Base_Scene {
         const t = this.t = program_state.animation_time / 3000;
         this.draw_walls(context, program_state, model_transform, this.wall_length);
         this.draw_border(context, program_state, this.wall_length);
-        this.shapes.floor.draw(context, program_state, floor_transform, this.materials.plastic.override({color:hex_color("#aaaaaa")}));
+        floor_transform = floor_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0))
+            .times(Mat4.scale(1000, 1000, 1));
+        this.shapes.floor.draw(context, program_state, floor_transform, this.materials.asphaltTexture);
         // this.shapes.cube.draw(context, program_state, wall_transform, this.materials.plastic.override({color:hex_color("#aaaaaa")}));
     }
 }
