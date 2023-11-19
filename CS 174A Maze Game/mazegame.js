@@ -78,10 +78,10 @@ export class MazeGame extends Base_Scene {
      */
     constructor() {
         super();
-        this.dim_x = 10;
-        this.dim_z = 10;
+        this.dim_x = 12;
+        this.dim_z = 12;
         this.wall_height = 5;
-        this.wall_length = 7;
+        this.wall_length = 11;
         this.maze = new Maze(this.dim_x, this.dim_z);
         this.grid = this.maze.getGrid();
 
@@ -127,18 +127,20 @@ export class MazeGame extends Base_Scene {
     draw_border(context, program_state, wall_length) {
         const rot = Math.PI/2;
         // these factor in the gaps for entrance and exit
-        const vertical_length = (this.dim_x-1)*wall_length
-        const horizontal_length = (this.dim_z-1)*wall_length
-        let wall1 = Mat4.identity().times(Mat4.translation(horizontal_length/2 + wall_length, this.wall_height, 0))
+        const h1_length = (this.dim_x)*wall_length;
+        const h2_length = (this.dim_x-1)*wall_length;
+        const v1_length = (this.dim_z)*wall_length;
+        const v2_length = (this.dim_z-1)*wall_length;
+        let wall1 = Mat4.identity().times(Mat4.translation(h1_length/2, this.wall_height, 0))
                                    .times(Mat4.rotation(rot, 0, 1, 0))
-                                   .times(Mat4.scale(1, this.wall_height, horizontal_length/2))
-        let wall2 = Mat4.identity().times(Mat4.translation(0, this.wall_height, vertical_length/2 + wall_length))
-                                   .times(Mat4.scale(1, this.wall_height, vertical_length/2))
-        let wall3 = Mat4.identity().times(Mat4.translation(horizontal_length + wall_length, this.wall_height, vertical_length/2 ))
-                                   .times(Mat4.scale(1, this.wall_height, vertical_length/2))
-        let wall4 = Mat4.identity().times(Mat4.translation(horizontal_length/2 , this.wall_height, vertical_length + wall_length))
+                                   .times(Mat4.scale(1, this.wall_height, h1_length/2))
+        let wall2 = Mat4.identity().times(Mat4.translation(0, this.wall_height, h1_length/2))
+                                   .times(Mat4.scale(1, this.wall_height, v1_length/2))
+        let wall3 = Mat4.identity().times(Mat4.translation(h2_length + wall_length, this.wall_height, v2_length/2 ))
+                                   .times(Mat4.scale(1, this.wall_height, v2_length/2))
+        let wall4 = Mat4.identity().times(Mat4.translation(h2_length/2 , this.wall_height, v2_length + wall_length))
                                    .times(Mat4.rotation(rot, 0, 1, 0))
-                                   .times(Mat4.scale(1, this.wall_height, horizontal_length/2))
+                                   .times(Mat4.scale(1, this.wall_height, h2_length/2))
         this.shapes.outerwall.draw(context, program_state, wall1, this.materials.concreteTexture);
         this.shapes.outerwall.draw(context, program_state, wall2, this.materials.concreteTexture);
         this.shapes.outerwall.draw(context, program_state, wall3, this.materials.concreteTexture);
