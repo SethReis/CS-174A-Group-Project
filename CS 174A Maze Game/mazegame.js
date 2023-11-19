@@ -152,13 +152,19 @@ export class MazeGame extends Base_Scene {
         // since walls are bricks, this represents 7 x 7 x height blocks
         let model_transform = Mat4.identity();
         let floor_transform = Mat4.identity();
+        let ceiling_transform = Mat4.identity();
 
         const t = this.t = program_state.animation_time / 3000;
         this.draw_walls(context, program_state, model_transform, this.wall_length);
         this.draw_border(context, program_state, this.wall_length);
         floor_transform = floor_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0))
             .times(Mat4.scale(1000, 1000, 1));
+
+        ceiling_transform = ceiling_transform.times(Mat4.translation((this.dim_x*this.wall_length)/2, this.wall_height*2, (this.dim_x*this.wall_length)/2))
+            .times(Mat4.scale((this.dim_x*this.wall_length)/2, 1, (this.dim_z*this.wall_length)/2))
+        
         this.shapes.floor.draw(context, program_state, floor_transform, this.materials.asphaltTexture);
+        this.shapes.cube.draw(context, program_state, ceiling_transform, this.materials.asphaltTexture);
         // this.shapes.cube.draw(context, program_state, wall_transform, this.materials.plastic.override({color:hex_color("#aaaaaa")}));
     }
 }
