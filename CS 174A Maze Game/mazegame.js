@@ -27,20 +27,25 @@ class Base_Scene extends Scene {
         this.materials = {
             plastic: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
-            brickTexture: new Material(new Textured_Phong(), {
+            innerWallTexture: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
                 ambient: 1, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/brickwall.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            concreteTexture: new Material(new Textured_Phong(), {
+            outerWallTexture: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
                 ambient: 1, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            asphaltTexture: new Material(new Textured_Phong(), {
+            floorTexture: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
                 ambient: 1, diffusivity: 0.1, specularity: 0.1,
-                texture: new Texture("assets/asphaltfloor.jpg", "LINEAR_MIPMAP_LINEAR")
+                texture: new Texture("assets/woodenfloor.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
+            ceilingTexture: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity:1, specularity: 1,
+                texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
         };
 
@@ -87,7 +92,7 @@ export class MazeGame extends Base_Scene {
 
         for (let i = 0; i < 24; i++) {
             this.shapes.outerwall.arrays.texture_coord[i] = vec((i % 2) * this.wall_length, Math.floor(i / 2) % 2);
-            this.shapes.floor.arrays.texture_coord[i] = vec((i % 2) * 500, (Math.floor(i / 2) % 2) * 500);
+            this.shapes.floor.arrays.texture_coord[i] = vec((i % 2) * 25, (Math.floor(i / 2) % 2) * 25);
         }
     }
     
@@ -114,7 +119,7 @@ export class MazeGame extends Base_Scene {
             .times(Mat4.scale(block_width / 2, this.wall_height, block_width / 2));  // Scale the cube to fit in the cell
 
         // Draw the cube
-        this.shapes.cube.draw(context, program_state, cube_transform, this.materials.brickTexture);
+        this.shapes.cube.draw(context, program_state, cube_transform, this.materials.innerWallTexture);
     }
 
     draw_walls(context, program_state, model_transform, wall_length) {
@@ -141,10 +146,10 @@ export class MazeGame extends Base_Scene {
         let wall4 = Mat4.identity().times(Mat4.translation(h2_length/2 , this.wall_height, v2_length + wall_length))
                                    .times(Mat4.rotation(rot, 0, 1, 0))
                                    .times(Mat4.scale(1, this.wall_height, h2_length/2))
-        this.shapes.outerwall.draw(context, program_state, wall1, this.materials.concreteTexture);
-        this.shapes.outerwall.draw(context, program_state, wall2, this.materials.concreteTexture);
-        this.shapes.outerwall.draw(context, program_state, wall3, this.materials.concreteTexture);
-        this.shapes.outerwall.draw(context, program_state, wall4, this.materials.concreteTexture);
+        this.shapes.outerwall.draw(context, program_state, wall1, this.materials.outerWallTexture);
+        this.shapes.outerwall.draw(context, program_state, wall2, this.materials.outerWallTexture);
+        this.shapes.outerwall.draw(context, program_state, wall3, this.materials.outerWallTexture);
+        this.shapes.outerwall.draw(context, program_state, wall4, this.materials.outerWallTexture);
     }
 
     display(context, program_state) {
@@ -158,13 +163,12 @@ export class MazeGame extends Base_Scene {
         this.draw_walls(context, program_state, model_transform, this.wall_length);
         this.draw_border(context, program_state, this.wall_length);
         floor_transform = floor_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0))
-            .times(Mat4.scale(1000, 1000, 1));
+            .times(Mat4.scale(this.dim_x*this.wall_length/2, this.dim_z*this.wall_length/2, 1))
+            .times(Mat4.translation(1, 1, 0))
+        this.shapes.floor.draw(context, program_state, floor_transform, this.materials.floorTexture);
 
-        ceiling_transform = ceiling_transform.times(Mat4.translation((this.dim_x*this.wall_length)/2, this.wall_height*2, (this.dim_x*this.wall_length)/2))
-            .times(Mat4.scale((this.dim_x*this.wall_length)/2, 1, (this.dim_z*this.wall_length)/2))
-        
-        this.shapes.floor.draw(context, program_state, floor_transform, this.materials.asphaltTexture);
-        this.shapes.cube.draw(context, program_state, ceiling_transform, this.materials.asphaltTexture);
+        ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2));
+        this.shapes.floor.draw(context, program_state, ceiling_transform, this.materials.ceilingTexture);
         // this.shapes.cube.draw(context, program_state, wall_transform, this.materials.plastic.override({color:hex_color("#aaaaaa")}));
     }
 }
