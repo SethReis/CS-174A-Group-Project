@@ -65,7 +65,7 @@ class Base_Scene extends Scene {
             // Define the global camera and projection matrices, which are stored in program_state.
             program_state.set_camera(Mat4.translation(-2.5, -5, -2.5));
         }
-        // enforce that the camera is always above the maze
+        // print out coords of all objects in program_state
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, 1, 100);
 
@@ -90,6 +90,7 @@ export class MazeGame extends Base_Scene {
         this.wall_length = 11;
         this.maze = new Maze(this.dim_x, this.dim_z);
         this.grid = this.maze.getGrid();
+        this.objects = [];
 
         for (let i = 0; i < 24; i++) {
             this.shapes.outerwall.arrays.texture_coord[i] = vec((i % 2) * this.wall_length, Math.floor(i / 2) % 2);
@@ -121,6 +122,7 @@ export class MazeGame extends Base_Scene {
 
         // Draw the cube
         this.shapes.cube.draw(context, program_state, cube_transform, this.materials.innerWallTexture);
+        this.objects.push({x: cube_x, y: cube_y, z: cube_z, transform: cube_transform});
     }
 
     draw_walls(context, program_state, model_transform, wall_length) {

@@ -845,6 +845,10 @@ const Movement_Controls = defs.Movement_Controls =
                     this.thrust[1] = 0;
                     this.isJumping = false;
                     this.jumpTime = 0;
+                    // reset the y position to 5 in the camera matrix
+                    // sometimes it crawls up to 5.01, 5.02 due to time
+                    // delays, so we can hard force it to 5
+                    this.camera_xz[1][3] = 5;
                 }
             }
         }
@@ -1000,6 +1004,7 @@ const Movement_Controls = defs.Movement_Controls =
             // is a jump
             this.matrix().set(this.camera_xz.times(this.y_rotation));
             this.inverse().set(Mat4.inverse(this.matrix()));
+            this.pos = this.camera_xz.times(vec4(0, 0, 0, 1)).to3();
         }
 
         display(context, graphics_state, dt = graphics_state.animation_delta_time / 1000) {
@@ -1021,8 +1026,7 @@ const Movement_Controls = defs.Movement_Controls =
             this.first_person_flyaround(dt * r, dt * m);
             this.jump(dt);
             // Log some values:
-            this.pos = this.inverse().times(vec4(0, 0, 0, 1));
-            this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
+            // this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
         }
 
     }
