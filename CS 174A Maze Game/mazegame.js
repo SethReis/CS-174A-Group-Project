@@ -65,6 +65,7 @@ class Base_Scene extends Scene {
             // Define the global camera and projection matrices, which are stored in program_state.
             program_state.set_camera(Mat4.translation(-2.5, -5, -2.5));
         }
+        // enforce that the camera is always above the maze
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, 1, 100);
 

@@ -826,6 +826,27 @@ const Movement_Controls = defs.Movement_Controls =
 
             this.mouse_enabled_canvases = new Set();
             this.will_take_over_graphics_state = true;
+            this.isJumping = false;
+            this.jumpTime = 0;
+            this.y_rotation = Mat4.identity();
+            this.camera_xz = Mat4.identity().times(Mat4.translation(5, 5, 5))
+                                              .times(Mat4.rotation(Math.PI, 3, 0, 0));
+        }
+
+        jump(dt) {
+            // make a sin wave for the jump
+            if (this.isJumping) {
+                this.jumpTime += dt;
+                // make sine function that oscillates between 0 and -1
+                const prev_thrust = this.thrust[1];
+                this.thrust[1] = -1.5*(Math.sin(this.jumpTime * 15));
+                // stop jumping if we are on the ground
+                if (prev_thrust > 0 && this.thrust[1] < 0) {
+                    this.thrust[1] = 0;
+                    this.isJumping = false;
+                    this.jumpTime = 0;
+                }
+            }
         }
 
         set_recipient(matrix_closure, inverse_closure) {
@@ -871,12 +892,12 @@ const Movement_Controls = defs.Movement_Controls =
             const delta_x = event.movementX * this.sensitivity;
             const delta_y = event.movementY * this.sensitivity;
 
-            // update camera
-            this.matrix().post_multiply(Mat4.rotation(-delta_x, 0, 1, 0));
-            this.inverse().pre_multiply(Mat4.rotation(delta_x, 0, 1, 0));
-        
-            this.matrix().post_multiply(Mat4.rotation(-delta_y, 1, 0, 0));
-            this.inverse().pre_multiply(Mat4.rotation(delta_y, 1, 0, 0));
+            // Calculate the new rotation increments
+            let new_xz_rotation = Mat4.rotation(-delta_x, 0, 1, 0);
+            this.y_rotation = this.y_rotation.times(Mat4.rotation(-delta_y, 1, 0, 0));
+
+            // Update camera in xz direction
+            this.camera_xz.post_multiply(new_xz_rotation);
         }
 
         show_explanation(document_element) {
@@ -897,14 +918,14 @@ const Movement_Controls = defs.Movement_Controls =
             this.new_line();
             this.new_line();
 
-            this.key_triggered_button("Up", [" "], () => this.thrust[1] = -1, undefined, () => this.thrust[1] = 0);
+            this.key_triggered_button("Up", [" "], () => this.isJumping = true);
             this.key_triggered_button("Forward", ["w"], () => this.thrust[2] = 1, undefined, () => this.thrust[2] = 0);
             this.new_line();
             this.key_triggered_button("Left", ["a"], () => this.thrust[0] = 1, undefined, () => this.thrust[0] = 0);
             this.key_triggered_button("Back", ["s"], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0);
             this.key_triggered_button("Right", ["d"], () => this.thrust[0] = -1, undefined, () => this.thrust[0] = 0);
             this.new_line();
-            this.key_triggered_button("Down", ["Shift"], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0);
+            // this.key_triggered_button("Down", ["Shift"], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0);
 
             
             const speed_controls = this.control_panel.appendChild(document.createElement("span"));
@@ -972,15 +993,13 @@ const Movement_Controls = defs.Movement_Controls =
         }
 
         first_person_flyaround(radians_per_frame, meters_per_frame) {
-            this.matrix().post_multiply(Mat4.rotation(-.1 * this.roll, 0, 0, 1));
-            this.inverse().pre_multiply(Mat4.rotation(+.1 * this.roll, 0, 0, 1));
-
-            // Now apply translation movement of the camera, in the newest local coordinate frame.
-            this.matrix().post_multiply(Mat4.translation(...this.thrust.times(-meters_per_frame)));
-            this.inverse().pre_multiply(Mat4.translation(...this.thrust.times(+meters_per_frame)));
-
-            // this.savedCenter = vec(this.savedCenter[0] + this.mouse.from_center[0], this.savedCenter[1] + this.mouse.from_center[1]);
-            // this.mouse.from_center = vec(0, 0);
+            this.camera_xz.post_multiply(Mat4.translation(...this.thrust.times(-meters_per_frame)));
+            // apply the y rotation AFTER thrusting
+            // this way if we're looking up or down we still go forward
+            // in the xz-plane. Only time we move up in y direction
+            // is a jump
+            this.matrix().set(this.camera_xz.times(this.y_rotation));
+            this.inverse().set(Mat4.inverse(this.matrix()));
         }
 
         display(context, graphics_state, dt = graphics_state.animation_delta_time / 1000) {
@@ -1000,6 +1019,7 @@ const Movement_Controls = defs.Movement_Controls =
             }
             // Move in first-person.  Scale the normal camera aiming speed by dt for smoothness:
             this.first_person_flyaround(dt * r, dt * m);
+            this.jump(dt);
             // Log some values:
             this.pos = this.inverse().times(vec4(0, 0, 0, 1));
             this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
