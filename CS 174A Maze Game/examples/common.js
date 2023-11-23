@@ -829,8 +829,7 @@ const Movement_Controls = defs.Movement_Controls =
             this.isJumping = false;
             this.jumpTime = 0;
             this.y_rotation = Mat4.identity();
-            this.camera_xz = Mat4.identity().times(Mat4.translation(5, 5, 5))
-                                              .times(Mat4.rotation(Math.PI, 3, 0, 0));
+            this.camera_xz = Mat4.identity().times(Mat4.translation(5, 5, 5));
         }
 
         jump(dt) {
@@ -996,7 +995,9 @@ const Movement_Controls = defs.Movement_Controls =
             this.new_line();
         }
 
-        first_person_flyaround(radians_per_frame, meters_per_frame) {
+        first_person_flyaround(radians_per_frame, meters_per_frame, graphics_state) {
+            // constrict thrust if colliding into an object
+            // console.log(graphics_state)
             this.camera_xz.post_multiply(Mat4.translation(...this.thrust.times(-meters_per_frame)));
             // apply the y rotation AFTER thrusting
             // this way if we're looking up or down we still go forward

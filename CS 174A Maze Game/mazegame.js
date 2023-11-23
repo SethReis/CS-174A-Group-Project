@@ -65,6 +65,7 @@ class Base_Scene extends Scene {
             // Define the global camera and projection matrices, which are stored in program_state.
             program_state.set_camera(Mat4.translation(-2.5, -5, -2.5));
         }
+
         // print out coords of all objects in program_state
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, 1, 100);
@@ -90,7 +91,7 @@ export class MazeGame extends Base_Scene {
         this.wall_length = 11;
         this.maze = new Maze(this.dim_x, this.dim_z);
         this.grid = this.maze.getGrid();
-        this.objects = [];
+        this.objects = new Set();
 
         for (let i = 0; i < 24; i++) {
             this.shapes.outerwall.arrays.texture_coord[i] = vec((i % 2) * this.wall_length, Math.floor(i / 2) % 2);
@@ -108,6 +109,24 @@ export class MazeGame extends Base_Scene {
         
     }
 
+    get_coords_from_transform(transform) {
+        const xMin = transform[0][3] - transform[0][0];
+        const xMax = transform[0][3] + transform[0][0];
+        const yMin = transform[1][3] - transform[1][1];
+        const yMax = transform[1][3] + transform[1][1];
+        const zMin = transform[2][3] - transform[2][2];
+        const zMax = transform[2][3] + transform[2][2];
+        return [xMin, xMax, yMin, yMax, zMin, zMax];
+    }
+
+    add_boundary(transform) {
+        const coords = this.get_coords_from_transform(transform);
+        const key = JSON.stringify(coords);
+        if (!this.objects.has(key)) {
+            this.objects.add(key);
+        }
+    }
+
     draw_wall(context, program_state, model_transform, block_width, x, z) {
         let color = hex_color("#a8e6cf");
         // randomly generate color
@@ -122,7 +141,7 @@ export class MazeGame extends Base_Scene {
 
         // Draw the cube
         this.shapes.cube.draw(context, program_state, cube_transform, this.materials.innerWallTexture);
-        this.objects.push({x: cube_x, y: cube_y, z: cube_z, transform: cube_transform});
+        this.add_boundary(cube_transform);
     }
 
     draw_walls(context, program_state, model_transform, wall_length) {
@@ -153,6 +172,11 @@ export class MazeGame extends Base_Scene {
         this.shapes.outerwall.draw(context, program_state, wall2, this.materials.outerWallTexture);
         this.shapes.outerwall.draw(context, program_state, wall3, this.materials.outerWallTexture);
         this.shapes.outerwall.draw(context, program_state, wall4, this.materials.outerWallTexture);
+
+        this.add_boundary(wall1);
+        this.add_boundary(wall2);
+        this.add_boundary(wall3);
+        this.add_boundary(wall4);
     }
 
     display(context, program_state) {
@@ -172,6 +196,8 @@ export class MazeGame extends Base_Scene {
 
         ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2));
         this.shapes.floor.draw(context, program_state, ceiling_transform, this.materials.ceilingTexture);
+        // store the coordinates of all objects in the program_state
+        program_state.objects = this.objects;
         // this.shapes.cube.draw(context, program_state, wall_transform, this.materials.plastic.override({color:hex_color("#aaaaaa")}));
     }
 }
