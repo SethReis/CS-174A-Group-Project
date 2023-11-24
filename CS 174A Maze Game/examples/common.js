@@ -1009,9 +1009,9 @@ const Movement_Controls = defs.Movement_Controls =
 
                 // whichever overlap is larger is the direction we're colliding in
                 if (x_overlap > z_overlap) {
-                    return [overlap_volume, "x"];
+                    return [overlap_volume, "x", x_overlap];
                 } else if (x_overlap < z_overlap) {
-                    return [overlap_volume, "z"];
+                    return [overlap_volume, "z", z_overlap];
                 }
             }
             return false;
@@ -1066,26 +1066,37 @@ const Movement_Controls = defs.Movement_Controls =
 
             }
             else if (collisions.length == 2) {
+                console.log("2", collisions)
                 let max_overlap = collisions[0];
+                let corner = false;
+                // corner, don't allow further movement
+                // we know it's a corner if the x and z overlaps are the same
+                // i.e. within a 0.01 threshold
+                // this won't apply to two consecutive walls since they will
+                // both just have z overlap.
+                if (Math.abs(collisions[0][2]-collisions[1][2]) < 0.1 && collisions[0][1] != collisions[1][1]) {
+                    corner = true;
+                }
                 for (let i = 1; i < collisions.length; i++) {
                     if (collisions[i][0] > max_overlap[0]) {
                         max_overlap = collisions[i];
                     }
                 }
-                // inhibit movement if the z and x overlaps are similar
-                // this prevents the camera from getting stuck in a corner
-                // where it can't move in either direction
                 
-                if (max_overlap[1] == "x") {
+                if (!corner && max_overlap[1] == "x") {
                     // if we're colliding in the x axis, only allow
                     // movement in the z axis
                     this.camera_xz[0][3] = new_pos[0][3];
                 }
-                else if (max_overlap[1] == "z") {
+                else if (!corner && max_overlap[1] == "z") {
                     // if we're colliding in the z axis, only allow
                     // movement in the x axis
                     this.camera_xz[2][3] = new_pos[2][3];
                 }
+            }
+            else {
+                console.log("CLEN: ", collisions.length)
+                console.log(collisions)
             }
 
             // apply the y rotation AFTER thrusting
