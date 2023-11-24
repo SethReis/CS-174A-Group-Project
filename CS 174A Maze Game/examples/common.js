@@ -976,6 +976,18 @@ const Movement_Controls = defs.Movement_Controls =
                 (Math.min(b1[5], b2[5]) - Math.max(b1[4], b2[4]));
         }
 
+        isFaceFullyColliding(camera_box, box) {
+            // calculate if the x-face of the camera_box is fully inside the box
+            let x_overlap_percentage = (Math.min(camera_box[1], box[1]) - Math.max(camera_box[0], box[0])) / (camera_box[1] - camera_box[0]) * 100;
+            let z_overlap_percentage = (Math.min(camera_box[5], box[5]) - Math.max(camera_box[4], box[4])) / (camera_box[5] - camera_box[4]) * 100;
+            // Determine if a face is fully colliding
+            let x_inside = x_overlap_percentage >= 90;
+            let z_inside = z_overlap_percentage >= 90;
+
+            return { x_inside, z_inside };
+        }
+
+
         get_collision_info(camera, box, margin) {
             const point = camera.times(vec4(0, 0, 0, 1)).to3();
             const camera_box = [
@@ -1000,8 +1012,6 @@ const Movement_Controls = defs.Movement_Controls =
                     return [overlap_volume, "x"];
                 } else if (x_overlap < z_overlap) {
                     return [overlap_volume, "z"];
-                } else {
-                    return [overlap_volume, "xz"]
                 }
             }
             return false;
@@ -1040,13 +1050,32 @@ const Movement_Controls = defs.Movement_Controls =
             // of the direction in which we're colliding
             if (collisions.length == 0) {
                 this.camera_xz = new_pos;
-            } else {
+            }
+            else if (collisions.length == 1) {
+                console.log("1")
+                if (collisions[0][1] == "x") {
+                    // if we're colliding in the x axis, only allow
+                    // movement in the z axis
+                    this.camera_xz[0][3] = new_pos[0][3];
+                }
+                else if (collisions[0][1] == "z") {
+                    // if we're colliding in the z axis, only allow
+                    // movement in the x axis
+                    this.camera_xz[2][3] = new_pos[2][3];
+                }
+
+            }
+            else if (collisions.length == 2) {
                 let max_overlap = collisions[0];
                 for (let i = 1; i < collisions.length; i++) {
                     if (collisions[i][0] > max_overlap[0]) {
                         max_overlap = collisions[i];
                     }
                 }
+                // inhibit movement if the z and x overlaps are similar
+                // this prevents the camera from getting stuck in a corner
+                // where it can't move in either direction
+                
                 if (max_overlap[1] == "x") {
                     // if we're colliding in the x axis, only allow
                     // movement in the z axis
