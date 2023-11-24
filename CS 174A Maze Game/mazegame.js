@@ -91,7 +91,8 @@ export class MazeGame extends Base_Scene {
         this.wall_length = 11;
         this.maze = new Maze(this.dim_x, this.dim_z);
         this.grid = this.maze.getGrid();
-        this.objects = new Set();
+        this.obj_set = new Set();
+        this.objects = [];
 
         for (let i = 0; i < 24; i++) {
             this.shapes.outerwall.arrays.texture_coord[i] = vec((i % 2) * this.wall_length, Math.floor(i / 2) % 2);
@@ -122,8 +123,9 @@ export class MazeGame extends Base_Scene {
     add_boundary(transform) {
         const coords = this.get_coords_from_transform(transform);
         const key = JSON.stringify(coords);
-        if (!this.objects.has(key)) {
-            this.objects.add(key);
+        if (!this.obj_set.has(key)) {
+            this.obj_set.add(key);
+            this.objects.push(coords);
         }
     }
 
@@ -197,7 +199,7 @@ export class MazeGame extends Base_Scene {
         ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2));
         this.shapes.floor.draw(context, program_state, ceiling_transform, this.materials.ceilingTexture);
         // store the coordinates of all objects in the program_state
-        program_state.objects = this.objects;
+        program_state.bboxes = this.objects;
         // this.shapes.cube.draw(context, program_state, wall_transform, this.materials.plastic.override({color:hex_color("#aaaaaa")}));
     }
 }
