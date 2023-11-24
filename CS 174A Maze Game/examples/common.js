@@ -1061,8 +1061,8 @@ const Movement_Controls = defs.Movement_Controls =
                     const delta_z = new_pos[2][3] - this.camera_xz[2][3];
                     const direction_z = delta_z > 0 ? 1 : -1;
                     // gently push the camera away from the edge
-                    this.camera_xz[0][3] += direction_x*1;
-                    this.camera_xz[2][3] += direction_z*1;
+                    this.camera_xz[0][3] += direction_x*0.5;
+                    this.camera_xz[2][3] += direction_z*0.5;
                 }
 
             }
