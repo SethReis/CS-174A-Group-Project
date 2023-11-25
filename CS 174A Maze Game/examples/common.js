@@ -974,12 +974,6 @@ const Movement_Controls = defs.Movement_Controls =
             }
         }
 
-        get_overlap_volume(b1, b2) {
-            return (Math.min(b1[1], b2[1]) - Math.max(b1[0], b2[0])) *
-                (Math.min(b1[3], b2[3]) - Math.max(b1[2], b2[2])) *
-                (Math.min(b1[5], b2[5]) - Math.max(b1[4], b2[4]));
-        }
-
         get_collision_info(camera, box, margin) {
             const point = camera.times(vec4(0, 0, 0, 1)).to3();
             const camera_box = [
@@ -990,11 +984,6 @@ const Movement_Controls = defs.Movement_Controls =
 
             // check if there's a collision
             if (this.check_is_collision(camera_box, box)) {
-                // calculate the volume formed by the intersection of the two boxes
-                // we need this to prioritize if we're intersecting with multiple
-                // boxes
-                const overlap_volume = this.get_overlap_volume(camera_box, box);
-                
                 // calculate overlaps in x and z axes
                 const x_overlap = Math.min(camera_box[1], box[1]) - Math.max(camera_box[0], box[0]);
                 const z_overlap = Math.min(camera_box[5], box[5]) - Math.max(camera_box[4], box[4]);
@@ -1014,13 +1003,13 @@ const Movement_Controls = defs.Movement_Controls =
                     // place the camera on the edge and gently push it away from
                     // the edge
                     const xz_edge = [x_edge, z_edge];
-                    return [overlap_volume, "edge", x_overlap > z_overlap ? "x" : "z", xz_edge];
+                    return [x_overlap, "edge", xz_edge];
                 }
 
                 if (x_overlap > z_overlap) {
-                    return [overlap_volume, "x", x_overlap];
+                    return [x_overlap, "x"];
                 } else if (x_overlap < z_overlap) {
-                    return [overlap_volume, "z", z_overlap];
+                    return [z_overlap, "z"];
                 }
             }
             return false;
@@ -1070,8 +1059,8 @@ const Movement_Controls = defs.Movement_Controls =
                     // if we're colliding in the z axis, only allow
                     // movement in the x axis
                     this.camera_xz[2][3] = new_pos[2][3];
-                } else { // edge!
-                    const edge_coord = collisions[0][3];
+                } else if (collisions[0][1] == "edge") {
+                    const edge_coord = collisions[0][2];
                     // place the camera on the edge
                     const delta_x = new_pos[0][3] - edge_coord[0];
                     const direction_x = delta_x > 0 ? 1 : -1;
@@ -1096,12 +1085,13 @@ const Movement_Controls = defs.Movement_Controls =
                 }
 
                 // corner, don't allow further movement
-                // we know it's a corner if the x and z overlaps are the same
-                // i.e. within a 0.01 threshold
-                // this won't apply to two consecutive walls since they will
-                // both just have z overlap.
+                // we know it's a corner if:
+                // 1. the collisions are in different axes
+                // 2. the overlaps are very similar
+                //      i.e. we're equally colliding in both axes
                 let corner = false;
-                if (Math.abs(collisions[0][2]-collisions[1][2]) < 0.1 && collisions[0][1] != collisions[1][1]) {
+                const corner_thresh = 0.1;
+                if (collisions[0][1] != collisions[1][1] && Math.abs(collisions[0][0]-collisions[1][0]) < corner_thresh) {
                     corner = true;
                 }
                 
