@@ -1092,7 +1092,7 @@ const Movement_Controls = defs.Movement_Controls =
                 // we don't care about those, so we can just ignore them
                 let max_overlap = collisions[0];
                 if (collisions[1][0] > max_overlap[0]) {
-                    max_overlap = collisions[i];
+                    max_overlap = collisions[1];
                 }
 
                 // corner, don't allow further movement
