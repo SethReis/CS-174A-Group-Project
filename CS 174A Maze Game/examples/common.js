@@ -1081,30 +1081,28 @@ const Movement_Controls = defs.Movement_Controls =
                     // put the camera exactly on the edge prior to collision
                     this.camera_xz[0][3] = edge_coord[0]+(direction_x*c_margin);
                     this.camera_xz[2][3] = edge_coord[1]+(direction_z*c_margin);
-
-                    
-                    // gently push the camera away from the edge
-                    // this.camera_xz[0][3] += direction_x*1.5;
-                    // this.camera_xz[2][3] += direction_z*1.5;
-                    console.log(collisions[0][3])
                 }
 
             }
             else if (collisions.length == 2) {
+                // if we're colliding with two side-by-side objects, we
+                // need to find the object with which we have maximum overlap
+                // and restrict movement in that direction. the other object
+                // may have trivial collisions in incorrect directions, but
+                // we don't care about those, so we can just ignore them
                 let max_overlap = collisions[0];
-                let corner = false;
+                if (collisions[1][0] > max_overlap[0]) {
+                    max_overlap = collisions[i];
+                }
+
                 // corner, don't allow further movement
                 // we know it's a corner if the x and z overlaps are the same
                 // i.e. within a 0.01 threshold
                 // this won't apply to two consecutive walls since they will
                 // both just have z overlap.
+                let corner = false;
                 if (Math.abs(collisions[0][2]-collisions[1][2]) < 0.1 && collisions[0][1] != collisions[1][1]) {
                     corner = true;
-                }
-                for (let i = 1; i < collisions.length; i++) {
-                    if (collisions[i][0] > max_overlap[0]) {
-                        max_overlap = collisions[i];
-                    }
                 }
                 
                 if (!corner && max_overlap[1] == "x") {
@@ -1117,10 +1115,11 @@ const Movement_Controls = defs.Movement_Controls =
                     // movement in the x axis
                     this.camera_xz[2][3] = new_pos[2][3];
                 }
+                // otherwise it's a corner, and we have full restriction!
             }
-            // just restrict the move if we're colliding with more than 2 objects
+            // just fully restrict the move if we're colliding with more than 2 objects
 
-            // apply the y rotation AFTER thrusting
+            // apply the y rotation AFTER moving in the xz plane
             // this way if we're looking up or down we still go forward
             // in the xz-plane. Only time we move up in y direction
             // is a jump

@@ -198,8 +198,9 @@ export class MazeGame extends Base_Scene {
 
         ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2));
         this.shapes.floor.draw(context, program_state, ceiling_transform, this.materials.ceilingTexture);
-        // store the coordinates of all objects in the program_state
+        // store the coordinates of all objects in the program_state!!!
+        // then we can access these bounding boxes in common.js
+        // to check for collisions
         program_state.bboxes = this.objects;
-        // this.shapes.cube.draw(context, program_state, wall_transform, this.materials.plastic.override({color:hex_color("#aaaaaa")}));
     }
 }
