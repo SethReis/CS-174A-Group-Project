@@ -894,11 +894,15 @@ const Movement_Controls = defs.Movement_Controls =
         handle_mousemove(event) {
             this.sensitivity = 0.0005 * (parseInt(this.sensitivity_slider.value)/10)
             const delta_x = event.movementX * this.sensitivity;
-            const delta_y = event.movementY * this.sensitivity;
+            let delta_y = event.movementY * this.sensitivity;
 
             // Calculate the new rotation increments
             let new_xz_rotation = Mat4.rotation(-delta_x, 0, 1, 0);
-            this.y_rotation = this.y_rotation.times(Mat4.rotation(-delta_y, 1, 0, 0));
+            // cap the y rotation so we can't look too far up or down
+            const new_y_rotation = this.y_rotation.copy().times(Mat4.rotation(-delta_y, 1, 0, 0));
+            if (new_y_rotation[2][1] > -0.9 && new_y_rotation[2][1] < 0.9) {
+                this.y_rotation = new_y_rotation;
+            }
 
             // Update camera in xz direction
             this.camera_xz.post_multiply(new_xz_rotation);
@@ -996,10 +1000,21 @@ const Movement_Controls = defs.Movement_Controls =
                 const z_overlap = Math.min(camera_box[5], box[5]) - Math.max(camera_box[4], box[4]);
 
                 // whichever overlap is larger is the direction we're colliding in
-                if (Math.abs(x_overlap - z_overlap) < 0.1) {
+                if (Math.abs(x_overlap - z_overlap) < 0.2) {
                     // if we're colliding in both x and z, we're at an edge
-                    let from_direction = x_overlap > z_overlap ? "x" : "z";
-                    return [overlap_volume, "corner", from_direction]
+                    
+                    // find the x-edge by checking if the camera is closer to the
+                    // left or right side of the box
+                    const x_edge = point[0] < box[0] ? box[0] : box[1];
+                    // find the z-edge by checking if the camera is closer to the
+                    // front or back side of the box
+                    const z_edge = point[2] < box[4] ? box[4] : box[5];
+
+                    // we now have the coordinates of the edge. this way, we can
+                    // place the camera on the edge and gently push it away from
+                    // the edge
+                    const xz_edge = [x_edge, z_edge];
+                    return [overlap_volume, "edge", x_overlap > z_overlap ? "x" : "z", xz_edge];
                 }
 
                 if (x_overlap > z_overlap) {
@@ -1056,13 +1071,22 @@ const Movement_Controls = defs.Movement_Controls =
                     // movement in the x axis
                     this.camera_xz[2][3] = new_pos[2][3];
                 } else { // edge!
-                    const delta_x = new_pos[0][3] - this.camera_xz[0][3];
+                    const edge_coord = collisions[0][3];
+                    // place the camera on the edge
+                    const delta_x = new_pos[0][3] - edge_coord[0];
                     const direction_x = delta_x > 0 ? 1 : -1;
-                    const delta_z = new_pos[2][3] - this.camera_xz[2][3];
+                    const delta_z = new_pos[2][3] - edge_coord[1];
                     const direction_z = delta_z > 0 ? 1 : -1;
+
+                    // put the camera exactly on the edge prior to collision
+                    this.camera_xz[0][3] = edge_coord[0]+(direction_x*c_margin);
+                    this.camera_xz[2][3] = edge_coord[1]+(direction_z*c_margin);
+
+                    
                     // gently push the camera away from the edge
-                    this.camera_xz[0][3] += direction_x*0.5;
-                    this.camera_xz[2][3] += direction_z*0.5;
+                    // this.camera_xz[0][3] += direction_x*1.5;
+                    // this.camera_xz[2][3] += direction_z*1.5;
+                    console.log(collisions[0][3])
                 }
 
             }
