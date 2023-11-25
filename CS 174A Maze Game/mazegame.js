@@ -92,7 +92,14 @@ export class MazeGame extends Base_Scene {
         this.maze = new Maze(this.dim_x, this.dim_z);
         this.grid = this.maze.getGrid();
         this.obj_set = new Set();
-        this.objects = [];
+        this.objects = [
+            // initialize with the outer walls
+            // [xMin, xMax, yMin, yMax, zMin, zMax]
+            [0, this.dim_x*this.wall_length, 0, this.wall_height, -1, 1],
+            [-1, 1, 0, this.wall_height, 0, this.dim_z*this.wall_length],
+            [0, this.dim_x*this.wall_length, 0, this.wall_height, this.dim_z*this.wall_length-1, this.dim_z*this.wall_length+1],
+            [this.dim_x*this.wall_length-1, this.dim_x*this.wall_length+1, 0, this.wall_height, 0, this.dim_z*this.wall_length],
+        ];
 
         for (let i = 0; i < 24; i++) {
             this.shapes.outerwall.arrays.texture_coord[i] = vec((i % 2) * this.wall_length, Math.floor(i / 2) % 2);
@@ -120,12 +127,15 @@ export class MazeGame extends Base_Scene {
         return [xMin, xMax, yMin, yMax, zMin, zMax];
     }
 
-    add_boundary(transform) {
+    add_boundary(transform, is_wall = false) {
         const coords = this.get_coords_from_transform(transform);
         const key = JSON.stringify(coords);
         if (!this.obj_set.has(key)) {
             this.obj_set.add(key);
             this.objects.push(coords);
+        }
+        if (is_wall) {
+            console.log(coords);
         }
     }
 
@@ -174,11 +184,6 @@ export class MazeGame extends Base_Scene {
         this.shapes.outerwall.draw(context, program_state, wall2, this.materials.outerWallTexture);
         this.shapes.outerwall.draw(context, program_state, wall3, this.materials.outerWallTexture);
         this.shapes.outerwall.draw(context, program_state, wall4, this.materials.outerWallTexture);
-
-        this.add_boundary(wall1);
-        this.add_boundary(wall2);
-        this.add_boundary(wall3);
-        this.add_boundary(wall4);
     }
 
     display(context, program_state) {
@@ -201,6 +206,7 @@ export class MazeGame extends Base_Scene {
         // store the coordinates of all objects in the program_state!!!
         // then we can access these bounding boxes in common.js
         // to check for collisions
+
         program_state.bboxes = this.objects;
     }
 }
