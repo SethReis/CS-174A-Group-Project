@@ -21,7 +21,6 @@ class Base_Scene extends Scene {
             'cube': new Cube(),
             'outerwall': new Cube(),
             'floor': new Square(),
-            flashlight: new Shape_From_File("assets/Flashlight.obj"),
         };
 
         // *** Materials
