@@ -1138,7 +1138,7 @@ const Movement_Controls = defs.Movement_Controls =
             this.first_person_flyaround(dt * r, dt * m, graphics_state);
             this.jump(dt);
             // Log some values:
-            // this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
+            this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
         }
 
     }
