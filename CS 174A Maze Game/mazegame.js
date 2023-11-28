@@ -28,26 +28,22 @@ class Base_Scene extends Scene {
             plastic: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
             innerWallTexture: new Material(new Normal_Map(), {
-                color: hex_color("#000000"),
-                ambient: 0.1, diffusivity: 0.1, specularity: 0.1,
-                texture: new Texture("assets/brickwall.jpg", "LINEAR_MIPMAP_LINEAR"),
-                normalTexture: new Texture("assets/brickwall_normal.jpg", "LINEAR_MIPMAP_LINEAR")
+                ambient: 0.1, diffusivity: 0.3, specularity: 0.1,
+                texture: new Texture("assets/TestNormalMap.png", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/TestNormalMap.png", "LINEAR_MIPMAP_LINEAR")
             }),
             outerWallTexture: new Material(new Normal_Map(), {
-                color: hex_color("#000000"),
-                ambient: 0.2, diffusivity: 1, specularity: 1,
+                ambient: 0.1, diffusivity: 0.3, specularity: 0.1,
                 texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR"),
                 normalTexture: new Texture("assets/concretewall_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
             floorTexture: new Material(new Normal_Map(), {
-                color: hex_color("#000000"),
-                ambient: 0.2, diffusivity: 1, specularity: 0.3,
+                ambient: 0.1, diffusivity: 0.3, specularity: 0.3,
                 texture: new Texture("assets/woodenfloor.jpg", "LINEAR_MIPMAP_LINEAR"),
                 normalTexture: new Texture("assets/woodenfloor_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
             ceilingTexture: new Material(new Normal_Map(), {
-                color: hex_color("#000000"),
-                ambient: 0.2, diffusivity: 1, specularity: 1,
+                ambient: 0.1, diffusivity: 0.3, specularity: 1.0,
                 texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR"),
                 normalTexture: new Texture("assets/metalceiling_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
