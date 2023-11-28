@@ -826,6 +826,31 @@ const Movement_Controls = defs.Movement_Controls =
 
             this.mouse_enabled_canvases = new Set();
             this.will_take_over_graphics_state = true;
+            this.isJumping = false;
+            this.jumpTime = 0;
+            this.y_rotation = Mat4.identity();
+            this.camera_xz = Mat4.identity().times(Mat4.translation(5, 5, 5));
+            this.camera_queue = [];
+        }
+
+        jump(dt) {
+            // make a sin wave for the jump
+            if (this.isJumping) {
+                this.jumpTime += dt;
+                // make sine function that oscillates between 0 and -1
+                const prev_thrust = this.thrust[1];
+                this.thrust[1] = -1.5*(Math.sin(this.jumpTime * 15));
+                // stop jumping if we are on the ground
+                if (prev_thrust > 0 && this.thrust[1] < 0) {
+                    this.thrust[1] = 0;
+                    this.isJumping = false;
+                    this.jumpTime = 0;
+                    // reset the y position to 5 in the camera matrix
+                    // sometimes it crawls up to 5.01, 5.02 due to time
+                    // delays, so we can hard force it to 5
+                    this.camera_xz[1][3] = 5;
+                }
+            }
         }
 
         set_recipient(matrix_closure, inverse_closure) {
@@ -869,14 +894,18 @@ const Movement_Controls = defs.Movement_Controls =
         handle_mousemove(event) {
             this.sensitivity = 0.0005 * (parseInt(this.sensitivity_slider.value)/10)
             const delta_x = event.movementX * this.sensitivity;
-            const delta_y = event.movementY * this.sensitivity;
+            let delta_y = event.movementY * this.sensitivity;
 
-            // update camera
-            this.matrix().post_multiply(Mat4.rotation(-delta_x, 0, 1, 0));
-            this.inverse().pre_multiply(Mat4.rotation(delta_x, 0, 1, 0));
-        
-            this.matrix().post_multiply(Mat4.rotation(-delta_y, 1, 0, 0));
-            this.inverse().pre_multiply(Mat4.rotation(delta_y, 1, 0, 0));
+            // Calculate the new rotation increments
+            let new_xz_rotation = Mat4.rotation(-delta_x, 0, 1, 0);
+            // cap the y rotation so we can't look too far up or down
+            const new_y_rotation = this.y_rotation.copy().times(Mat4.rotation(-delta_y, 1, 0, 0));
+            if (new_y_rotation[2][1] > -0.9 && new_y_rotation[2][1] < 0.9) {
+                this.y_rotation = new_y_rotation;
+            }
+
+            // Update camera in xz direction
+            this.camera_xz.post_multiply(new_xz_rotation);
         }
 
         show_explanation(document_element) {
@@ -897,14 +926,14 @@ const Movement_Controls = defs.Movement_Controls =
             this.new_line();
             this.new_line();
 
-            this.key_triggered_button("Up", [" "], () => this.thrust[1] = -1, undefined, () => this.thrust[1] = 0);
+            this.key_triggered_button("Up", [" "], () => this.isJumping = true);
             this.key_triggered_button("Forward", ["w"], () => this.thrust[2] = 1, undefined, () => this.thrust[2] = 0);
             this.new_line();
             this.key_triggered_button("Left", ["a"], () => this.thrust[0] = 1, undefined, () => this.thrust[0] = 0);
             this.key_triggered_button("Back", ["s"], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0);
             this.key_triggered_button("Right", ["d"], () => this.thrust[0] = -1, undefined, () => this.thrust[0] = 0);
             this.new_line();
-            this.key_triggered_button("Down", ["Shift"], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0);
+            // this.key_triggered_button("Down", ["Shift"], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0);
 
             
             const speed_controls = this.control_panel.appendChild(document.createElement("span"));
@@ -934,53 +963,160 @@ const Movement_Controls = defs.Movement_Controls =
             }, sensitivity_controls);
             sensitivity_controls.appendChild(this.sensitivity_slider);
             this.new_line();
-            this.new_line();
             
-
-            this.key_triggered_button("Roll left", [","], () => this.roll = 1, undefined, () => this.roll = 0);
-            this.key_triggered_button("Roll right", ["."], () => this.roll = -1, undefined, () => this.roll = 0);
-            this.new_line();
-            this.key_triggered_button("Go to world origin", ["r"], () => {
-                this.matrix().set_identity(4, 4);
-                this.inverse().set_identity(4, 4)
-            }, "#8B8885");
-            this.new_line();
-
-            this.key_triggered_button("Look at origin from front", ["1"], () => {
-                this.inverse().set(Mat4.look_at(vec3(0, 0, 10), vec3(0, 0, 0), vec3(0, 1, 0)));
-                this.matrix().set(Mat4.inverse(this.inverse()));
-            }, "#8B8885");
-            this.new_line();
-            this.key_triggered_button("from right", ["2"], () => {
-                this.inverse().set(Mat4.look_at(vec3(10, 0, 0), vec3(0, 0, 0), vec3(0, 1, 0)));
-                this.matrix().set(Mat4.inverse(this.inverse()));
-            }, "#8B8885");
-            this.key_triggered_button("from rear", ["3"], () => {
-                this.inverse().set(Mat4.look_at(vec3(0, 0, -10), vec3(0, 0, 0), vec3(0, 1, 0)));
-                this.matrix().set(Mat4.inverse(this.inverse()));
-            }, "#8B8885");
-            this.key_triggered_button("from left", ["4"], () => {
-                this.inverse().set(Mat4.look_at(vec3(-10, 0, 0), vec3(0, 0, 0), vec3(0, 1, 0)));
-                this.matrix().set(Mat4.inverse(this.inverse()));
-            }, "#8B8885");
-            this.new_line();
-            this.key_triggered_button("Attach to global camera", ["Shift", "R"],
-                () => {
-                    this.will_take_over_graphics_state = true
-                }, "#8B8885");
-            this.new_line();
         }
 
-        first_person_flyaround(radians_per_frame, meters_per_frame) {
-            this.matrix().post_multiply(Mat4.rotation(-.1 * this.roll, 0, 0, 1));
-            this.inverse().pre_multiply(Mat4.rotation(+.1 * this.roll, 0, 0, 1));
+        check_is_collision(b1, b2) {
+            if ((b1[1] > b2[0] && b1[0] < b2[1]) &&
+                (b1[3] > b2[2] && b1[2] < b2[3]) &&
+                (b1[5] > b2[4] && b1[4] < b2[5])) {
+                return true;
+            }
+        }
 
-            // Now apply translation movement of the camera, in the newest local coordinate frame.
-            this.matrix().post_multiply(Mat4.translation(...this.thrust.times(-meters_per_frame)));
-            this.inverse().pre_multiply(Mat4.translation(...this.thrust.times(+meters_per_frame)));
+        get_collision_info(camera, box, margin) {
+            const point = camera.times(vec4(0, 0, 0, 1)).to3();
+            const camera_box = [
+                point[0] - margin, point[0] + margin,
+                point[1] - margin, point[1] + margin,
+                point[2] - margin, point[2] + margin
+            ];
 
-            // this.savedCenter = vec(this.savedCenter[0] + this.mouse.from_center[0], this.savedCenter[1] + this.mouse.from_center[1]);
-            // this.mouse.from_center = vec(0, 0);
+            // check if there's a collision
+            if (this.check_is_collision(camera_box, box)) {
+                // calculate overlaps in x and z axes
+                const x_overlap = Math.min(camera_box[1], box[1]) - Math.max(camera_box[0], box[0]);
+                const z_overlap = Math.min(camera_box[5], box[5]) - Math.max(camera_box[4], box[4]);
+
+                // whichever overlap is larger is the direction we're colliding in
+                if (Math.abs(x_overlap - z_overlap) < 0.2) {
+                    // if we're colliding in both x and z, we're at an edge
+                    
+                    // find the x-edge by checking if the camera is closer to the
+                    // left or right side of the box
+                    const x_edge = point[0] < box[0] ? box[0] : box[1];
+                    // find the z-edge by checking if the camera is closer to the
+                    // front or back side of the box
+                    const z_edge = point[2] < box[4] ? box[4] : box[5];
+
+                    // we now have the coordinates of the edge. this way, we can
+                    // place the camera on the edge and gently push it away from
+                    // the edge
+                    const xz_edge = [x_edge, z_edge];
+                    return [x_overlap, "edge", xz_edge];
+                }
+
+                if (x_overlap > z_overlap) {
+                    return [x_overlap, "x"];
+                } else if (x_overlap < z_overlap) {
+                    return [z_overlap, "z"];
+                }
+            }
+            return false;
+        }
+
+        first_person_flyaround(radians_per_frame, meters_per_frame, graphics_state) {
+            // define margin of camera (i.e. create an invisible cube around camera)
+            const c_margin = 1.3
+            // retrieve all bounding boxes in the scene
+            // a bounding box is of format [x1, x2, y1, y2, z1, z2]
+            const objects = graphics_state.bboxes;
+
+            // examine the new position before we apply it, so we can see
+            // if a collision is GOING to happen
+            const new_pos = this.camera_xz.copy().post_multiply(Mat4.translation(...this.thrust.times(-meters_per_frame)));
+            
+            // store all the collisions that happen
+            // usually it's just zero or one, but if we're colliding
+            // with multiple objects, we need to know which one to
+            // prioritize (i.e. the one with the largest overlap area)
+            const collisions = [];
+
+            // check if the new position is colliding with any objects
+            if (this.thrust[0] != 0 || this.thrust[2] != 0) {
+                for (let i = 0; i < objects.length; i++) {
+                    const obj = objects[i];
+                    // collision margin of 1.3
+                    let collide_result = this.get_collision_info(new_pos, obj, c_margin);
+                    if (collide_result != false) {
+                        collisions.push(collide_result);
+                    }
+                }
+            }
+
+            // if we're colliding, restrict the movement
+            // of the direction in which we're colliding
+            if (collisions.length == 0) {
+                this.camera_xz = new_pos;
+            }
+            else if (collisions.length == 1) {
+                if (collisions[0][1] == "x") {
+                    // if we're colliding in the x axis, only allow
+                    // movement in the z axis
+                    this.camera_xz[0][3] = new_pos[0][3];
+                }
+                else if (collisions[0][1] == "z") {
+                    // if we're colliding in the z axis, only allow
+                    // movement in the x axis
+                    this.camera_xz[2][3] = new_pos[2][3];
+                } else if (collisions[0][1] == "edge") {
+                    const edge_coord = collisions[0][2];
+                    // place the camera on the edge
+                    const delta_x = new_pos[0][3] - edge_coord[0];
+                    const direction_x = delta_x > 0 ? 1 : -1;
+                    const delta_z = new_pos[2][3] - edge_coord[1];
+                    const direction_z = delta_z > 0 ? 1 : -1;
+
+                    // put the camera exactly on the edge prior to collision
+                    this.camera_xz[0][3] = edge_coord[0]+(direction_x*c_margin);
+                    this.camera_xz[2][3] = edge_coord[1]+(direction_z*c_margin);
+                }
+
+            }
+            else if (collisions.length == 2) {
+                // if we're colliding with two side-by-side objects, we
+                // need to find the object with which we have maximum overlap
+                // and restrict movement in that direction. the other object
+                // may have trivial collisions in incorrect directions, but
+                // we don't care about those, so we can just ignore them
+                let max_overlap = collisions[0];
+                if (collisions[1][0] > max_overlap[0]) {
+                    max_overlap = collisions[1];
+                }
+
+                // corner, don't allow further movement
+                // we know it's a corner if:
+                // 1. the collisions are in different axes
+                // 2. the overlaps are very similar
+                //      i.e. we're equally colliding in both axes
+                let corner = false;
+                const corner_thresh = 0.1;
+                if (collisions[0][1] != collisions[1][1] && Math.abs(collisions[0][0]-collisions[1][0]) < corner_thresh) {
+                    corner = true;
+                }
+                
+                if (!corner && max_overlap[1] == "x") {
+                    // if we're colliding in the x axis, only allow
+                    // movement in the z axis
+                    this.camera_xz[0][3] = new_pos[0][3];
+                }
+                else if (!corner && max_overlap[1] == "z") {
+                    // if we're colliding in the z axis, only allow
+                    // movement in the x axis
+                    this.camera_xz[2][3] = new_pos[2][3];
+                }
+                // otherwise it's a corner, and we have full restriction!
+            }
+            // just fully restrict the move if we're colliding with more than 2 objects
+
+            // apply the y rotation AFTER moving in the xz plane
+            // this way if we're looking up or down we still go forward
+            // in the xz-plane. Only time we move up in y direction
+            // is a jump
+            this.camera_xz[1] = new_pos[1];
+            this.matrix().set(this.camera_xz.times(this.y_rotation));
+            this.inverse().set(Mat4.inverse(this.matrix()));
+            this.pos = this.camera_xz.times(vec4(0, 0, 0, 1)).to3();
         }
 
         display(context, graphics_state, dt = graphics_state.animation_delta_time / 1000) {
@@ -999,10 +1135,10 @@ const Movement_Controls = defs.Movement_Controls =
                 this.mouse_enabled_canvases.add(context.canvas)
             }
             // Move in first-person.  Scale the normal camera aiming speed by dt for smoothness:
-            this.first_person_flyaround(dt * r, dt * m);
+            this.first_person_flyaround(dt * r, dt * m, graphics_state);
+            this.jump(dt);
             // Log some values:
-            this.pos = this.inverse().times(vec4(0, 0, 0, 1));
-            this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
+            // this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
         }
 
     }

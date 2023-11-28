@@ -65,6 +65,8 @@ class Base_Scene extends Scene {
             // Define the global camera and projection matrices, which are stored in program_state.
             program_state.set_camera(Mat4.translation(-2.5, -5, -2.5));
         }
+
+        // print out coords of all objects in program_state
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, 1, 100);
 
@@ -89,6 +91,15 @@ export class MazeGame extends Base_Scene {
         this.wall_length = 11;
         this.maze = new Maze(this.dim_x, this.dim_z);
         this.grid = this.maze.getGrid();
+        this.obj_set = new Set();
+        this.objects = [
+            // initialize with the outer walls
+            // [xMin, xMax, yMin, yMax, zMin, zMax]
+            [0, this.dim_x*this.wall_length, 0, 2*this.wall_height, -1, 1],
+            [-1, 1, 0, 2*this.wall_height, 0, this.dim_z*this.wall_length],
+            [0, this.dim_x*this.wall_length, 0, 2*this.wall_height, this.dim_z*this.wall_length-1, this.dim_z*this.wall_length+1],
+            [this.dim_x*this.wall_length-1, this.dim_x*this.wall_length+1, 0, 2*this.wall_height, 0, this.dim_z*this.wall_length],
+        ];
 
         for (let i = 0; i < 24; i++) {
             this.shapes.outerwall.arrays.texture_coord[i] = vec((i % 2) * this.wall_length, Math.floor(i / 2) % 2);
@@ -106,6 +117,28 @@ export class MazeGame extends Base_Scene {
         
     }
 
+    get_coords_from_transform(transform) {
+        const xMin = transform[0][3] - transform[0][0];
+        const xMax = transform[0][3] + transform[0][0];
+        const yMin = transform[1][3] - transform[1][1];
+        const yMax = transform[1][3] + transform[1][1];
+        const zMin = transform[2][3] - transform[2][2];
+        const zMax = transform[2][3] + transform[2][2];
+        return [xMin, xMax, yMin, yMax, zMin, zMax];
+    }
+
+    add_boundary(transform, is_wall = false) {
+        const coords = this.get_coords_from_transform(transform);
+        const key = JSON.stringify(coords);
+        if (!this.obj_set.has(key)) {
+            this.obj_set.add(key);
+            this.objects.push(coords);
+        }
+        if (is_wall) {
+            console.log(coords);
+        }
+    }
+
     draw_wall(context, program_state, model_transform, block_width, x, z) {
         let color = hex_color("#a8e6cf");
         // randomly generate color
@@ -120,6 +153,7 @@ export class MazeGame extends Base_Scene {
 
         // Draw the cube
         this.shapes.cube.draw(context, program_state, cube_transform, this.materials.innerWallTexture);
+        this.add_boundary(cube_transform);
     }
 
     draw_walls(context, program_state, model_transform, wall_length) {
@@ -169,6 +203,10 @@ export class MazeGame extends Base_Scene {
 
         ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2));
         this.shapes.floor.draw(context, program_state, ceiling_transform, this.materials.ceilingTexture);
-        // this.shapes.cube.draw(context, program_state, wall_transform, this.materials.plastic.override({color:hex_color("#aaaaaa")}));
+        // store the coordinates of all objects in the program_state!!!
+        // then we can access these bounding boxes in common.js
+        // to check for collisions
+
+        program_state.bboxes = this.objects;
     }
 }
