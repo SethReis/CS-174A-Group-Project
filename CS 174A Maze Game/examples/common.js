@@ -803,6 +803,65 @@ const Fake_Bump_Map = defs.Fake_Bump_Map =
         }
     }
 
+const Normal_Map = defs.Normal_Map =
+    class Normal_Map extends Textured_Phong {
+        // **Normal_Map** Extends Textured_Phong, and implements normal mapping
+        vertex_glsl_code() {
+            // ********* VERTEX SHADER *********
+            return this.shared_glsl_code() + `
+                varying vec2 f_tex_coord;
+                attribute vec3 position, normal;                            
+                // Position is expressed in object coordinates.
+                attribute vec2 texture_coord;
+                
+                uniform mat4 model_transform;
+                uniform mat4 projection_camera_model_transform;
+                
+                varying vec3 T;
+                varying vec3 B;
+        
+                void main(){                                                                   
+                    // The vertex's final resting place (in NDCS):
+                    gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
+                    // The final normal vector in screen space.
+                    N = normalize( mat3( model_transform ) * normal / squared_scale);
+                    T = normalize( mat3( model_transform ) * cross(N, vec3(0.0, 1.0, 0.0)));
+                    if (T == vec3(0.0, 0.0, 0.0)){
+                        T = normalize( mat3( model_transform ) * cross(N, vec3(0.0, 1.0, 0.0)));
+                    }
+                    B = normalize( mat3( model_transform ) * cross(N, T));
+                    vertex_worldspace = ( model_transform * vec4( position, 1.0 ) ).xyz;
+                    // Turn the per-vertex texture coordinate into an interpolated variable.
+                    f_tex_coord = texture_coord;
+                  } `;
+        }
+
+        fragment_glsl_code() {
+            // ********* FRAGMENT SHADER *********
+            // A fragment is a pixel that's overlapped by the current triangle.
+            // Fragments affect the final image or get discarded due to depth.
+            return this.shared_glsl_code() + `
+                varying vec2 f_tex_coord;
+                uniform sampler2D texture;
+                uniform sampler2D normalTexture;
+                
+                varying vec3 T;
+                varying vec3 B;
+        
+                void main(){
+                    // Sample the texture image in the correct place:
+                    mat3 TBN = mat3 (T, B, N);
+                    vec4 tex_color = texture2D( texture, f_tex_coord.st );
+                    vec3 normal = texture2D(normalTexture, f_tex_coord).xyz * 2.0 - 1.0;
+                    //normal *= TBN;
+                                                                             // Compute an initial (ambient) color:
+                    gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
+                                                                             // Compute the final color with contributions from lights:
+                    gl_FragColor.xyz += phong_model_lights( normalize( normal ), vertex_worldspace );
+                  } `;
+        }
+    }
+
 
 const Movement_Controls = defs.Movement_Controls =
     class Movement_Controls extends Scene {
@@ -1138,7 +1197,7 @@ const Movement_Controls = defs.Movement_Controls =
             this.first_person_flyaround(dt * r, dt * m, graphics_state);
             this.jump(dt);
             // Log some values:
-            // this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
+            this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
         }
 
     }

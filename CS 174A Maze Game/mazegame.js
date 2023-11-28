@@ -5,7 +5,7 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
 
-const {Cube, Square, Textured_Phong} = defs
+const {Cube, Square, Textured_Phong, Normal_Map, Fake_Bump_Map} = defs
 
 class Base_Scene extends Scene {
     /**
@@ -27,25 +27,29 @@ class Base_Scene extends Scene {
         this.materials = {
             plastic: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
-            innerWallTexture: new Material(new Textured_Phong(), {
+            innerWallTexture: new Material(new Normal_Map(), {
                 color: hex_color("#000000"),
-                ambient: 1, diffusivity: 0.1, specularity: 0.1,
-                texture: new Texture("assets/brickwall.jpg", "LINEAR_MIPMAP_LINEAR")
+                ambient: 0.1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/brickwall.jpg", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/brickwall_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            outerWallTexture: new Material(new Textured_Phong(), {
+            outerWallTexture: new Material(new Normal_Map(), {
                 color: hex_color("#000000"),
-                ambient: 1, diffusivity: 0.1, specularity: 0.1,
-                texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR")
+                ambient: 0.2, diffusivity: 1, specularity: 1,
+                texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/concretewall_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            floorTexture: new Material(new Textured_Phong(), {
+            floorTexture: new Material(new Normal_Map(), {
                 color: hex_color("#000000"),
-                ambient: 1, diffusivity: 0.1, specularity: 0.1,
-                texture: new Texture("assets/woodenfloor.jpg", "LINEAR_MIPMAP_LINEAR")
+                ambient: 0.2, diffusivity: 1, specularity: 0.3,
+                texture: new Texture("assets/woodenfloor.jpg", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/woodenfloor_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            ceilingTexture: new Material(new Textured_Phong(), {
+            ceilingTexture: new Material(new Normal_Map(), {
                 color: hex_color("#000000"),
-                ambient: 1, diffusivity:1, specularity: 1,
-                texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR")
+                ambient: 0.2, diffusivity: 1, specularity: 1,
+                texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/metalceiling_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
         };
 
@@ -71,7 +75,7 @@ class Base_Scene extends Scene {
             Math.PI / 4, context.width / context.height, 1, 100);
 
         // *** Lights: *** Values of vector or point lights.
-        const light_position = vec4(0, 5, 5, 1);
+        const light_position = vec4(5, 5, 5, 1);
         program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
     }
 }
