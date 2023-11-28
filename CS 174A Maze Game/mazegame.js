@@ -20,32 +20,32 @@ class Base_Scene extends Scene {
         this.shapes = {
             'cube': new Cube(),
             'outerwall': new Cube(),
-            'floor': new Square(),
+            'floor': new Cube(),
         };
         
         // *** Materials
         this.materials = {
             plastic: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
-            innerWallTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#ffffff"),
-                ambient: .1, diffusivity: 1, specularity: 0.1,
-                texture: new Texture("assets/brickwall.jpg", "LINEAR_MIPMAP_LINEAR")
+            innerWallTexture: new Material(new Normal_Map(), {
+                ambient: 0.1, diffusivity: 0.3, specularity: 0.1,
+                texture: new Texture("assets/brickwall.jpg", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/brickwall_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            outerWallTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#ffffff"),
-                ambient: .1, diffusivity: 1, specularity: 0.1,
-                texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR")
+            outerWallTexture: new Material(new Normal_Map(), {
+                ambient: 0.1, diffusivity: 0.3, specularity: 0.1,
+                texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/concretewall_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            floorTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#ffffff"),
-                ambient: .1, diffusivity: 1, specularity: 0.1,
-                texture: new Texture("assets/woodenfloor.jpg", "LINEAR_MIPMAP_LINEAR")
+            floorTexture: new Material(new Normal_Map(), {
+                ambient: 0.1, diffusivity: 0.3, specularity: 0.3,
+                texture: new Texture("assets/woodenfloor.jpg", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/woodenfloor_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            ceilingTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#ffffff"),
-                ambient: .1, diffusivity: 1, specularity: 0.1,
-                texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR")
+            ceilingTexture: new Material(new Normal_Map(), {
+                ambient: 0.1, diffusivity: 0.3, specularity: 1.0,
+                texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/metalceiling_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
             flashlight: new Material(new Textured_Phong(), {
                 color: hex_color("#ffffff"),
@@ -73,7 +73,7 @@ class Base_Scene extends Scene {
 
         let x = 0
         if (this.flashlightActive) {
-            x = 100 }
+            x = 500 }
         else {
             x = 0 }
 
@@ -214,10 +214,10 @@ export class MazeGame extends Base_Scene {
         this.draw_border(context, program_state, this.wall_length);
         floor_transform = floor_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0))
             .times(Mat4.scale(this.dim_x*this.wall_length/2, this.dim_z*this.wall_length/2, 1))
-            .times(Mat4.translation(1, 1, 0))
+            .times(Mat4.translation(1, 1, 0.5))
         this.shapes.floor.draw(context, program_state, floor_transform, this.materials.floorTexture);
 
-        ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2));
+        ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2 - 1));
         this.shapes.floor.draw(context, program_state, ceiling_transform, this.materials.ceilingTexture);
         // store the coordinates of all objects in the program_state!!!
         // then we can access these bounding boxes in common.js
