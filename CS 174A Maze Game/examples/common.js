@@ -590,8 +590,9 @@ const Phong_Shader = defs.Phong_Shader =
                 uniform vec4 light_positions_or_vectors[N_LIGHTS], light_colors[N_LIGHTS];
                 uniform float light_attenuation_factors[N_LIGHTS];
                 uniform vec4 shape_color;
-                uniform vec3 squared_scale, camera_center;
-        
+                uniform vec3 squared_scale, camera_center, camera_direction;
+                float u_limit = .97;
+                
                 // Specifier "varying" means a variable's final value will be passed from the vertex shader
                 // on to the next phase (fragment shader), then interpolated per-fragment, weighted by the
                 // pixel fragment's proximity to each of the 3 vertices (barycentric interpolation).
@@ -611,7 +612,13 @@ const Phong_Shader = defs.Phong_Shader =
                         vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz - 
                                                        light_positions_or_vectors[i].w * vertex_worldspace;                                             
                         float distance_to_light = length( surface_to_light_vector );
-        
+
+                        // added circular center for light with blend factor
+                        vec3 u_lightDirection = normalize(camera_direction);
+                        vec3 surfaceToLightDirection = normalize(surface_to_light_vector);
+                        float dotFromDirection = dot(surfaceToLightDirection, -u_lightDirection);
+                        float blend_factor = smoothstep(u_limit - 0.03, u_limit, dotFromDirection);
+
                         vec3 L = normalize( surface_to_light_vector );
                         vec3 H = normalize( L + E );
                         // Compute the diffuse and specular components from the Phong
@@ -622,7 +629,7 @@ const Phong_Shader = defs.Phong_Shader =
                         
                         vec3 light_contribution = shape_color.xyz * light_colors[i].xyz * diffusivity * diffuse
                                                                   + light_colors[i].xyz * specularity * specular;
-                        result += attenuation * light_contribution;
+                        result += attenuation * mix(vec3(0.0), light_contribution, blend_factor);
                       }
                     return result;
                   } `;
@@ -672,7 +679,11 @@ const Phong_Shader = defs.Phong_Shader =
         send_gpu_state(gl, gpu, gpu_state, model_transform) {
             // send_gpu_state():  Send the state of our whole drawing context to the GPU.
             const O = vec4(0, 0, 0, 1), camera_center = gpu_state.camera_transform.times(O).to3();
-            gl.uniform3fv(gpu.camera_center, camera_center);
+
+            // added sending the eye vector to GPU
+            const E = vec4(0, 0, -1, 0), inverse_camera_direction = gpu_state.camera_transform.times(E).to3()
+            gl.uniform3fv(gpu.camera_direction, inverse_camera_direction);
+            
             // Use the squared scale trick from "Eric's blog" instead of inverse transpose matrix:
             const squared_scale = model_transform.reduce(
                 (acc, r) => {
