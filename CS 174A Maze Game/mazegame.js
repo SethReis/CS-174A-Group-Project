@@ -22,37 +22,38 @@ class Base_Scene extends Scene {
             'outerwall': new Cube(),
             'floor': new Square(),
         };
-
+        
         // *** Materials
         this.materials = {
             plastic: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
             innerWallTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                color: hex_color("#ffffff"),
+                ambient: .1, diffusivity: 1, specularity: 0.1,
                 texture: new Texture("assets/brickwall.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
             outerWallTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                color: hex_color("#ffffff"),
+                ambient: .1, diffusivity: 1, specularity: 0.1,
                 texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
             floorTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                color: hex_color("#ffffff"),
+                ambient: .1, diffusivity: 1, specularity: 0.1,
                 texture: new Texture("assets/woodenfloor.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
             ceilingTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 1, diffusivity:1, specularity: 1,
+                color: hex_color("#ffffff"),
+                ambient: .1, diffusivity: 1, specularity: 0.1,
                 texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
+            flashlight: new Material(new Textured_Phong(), {
+                color: hex_color("#ffffff"),
+                ambient: .1, diffusivity: 1, specularity: 0.1,
+                texture: new Texture("assets/FlashlightTexture.png", "LINEAR_MIPMAP_LINEAR")
             }),
         };
 
-        this.colors_array = []
-        for (let i = 0; i < 8; i++) {
-            this.colors_array.push(color(Math.random()*0.5 + 0.25, Math.random()*0.5 + 0.25, Math.random()*0.5 + 0.25, 1.0));
-        }
     }
 
     display(context, program_state) {
@@ -70,9 +71,15 @@ class Base_Scene extends Scene {
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, 1, 100);
 
+        let x = 0
+        if (this.flashlightActive) {
+            x = 100 }
+        else {
+            x = 0 }
+
         // *** Lights: *** Values of vector or point lights.
-        const light_position = vec4(0, 5, 5, 1);
-        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
+        const O = vec4(1, 1, 1, 1), camera_center = program_state.camera_transform.times(O);
+        program_state.lights = [new Light(camera_center, color(1, 1, 1, 1), x)];
     }
 }
 
@@ -114,7 +121,16 @@ export class MazeGame extends Base_Scene {
     }
 
     make_control_panel() {
-        
+        this.key_triggered_button("Toggle Flashlight", ["f"], () => this.toggleFlashlight());
+    }
+
+    // flashlight toggle with clicking sound
+    toggleFlashlight() {
+        this.flashlight_click = new Audio('flashlight-click.mp3');
+        this.flashlight_click.play();
+        setTimeout(() => {
+            this.flashlightActive = !this.flashlightActive;
+        }, 200); 
     }
 
     get_coords_from_transform(transform) {
