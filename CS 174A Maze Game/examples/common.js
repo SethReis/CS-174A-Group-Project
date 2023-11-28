@@ -1113,6 +1113,7 @@ const Movement_Controls = defs.Movement_Controls =
             // this way if we're looking up or down we still go forward
             // in the xz-plane. Only time we move up in y direction
             // is a jump
+            this.camera_xz[1] = new_pos[1];
             this.matrix().set(this.camera_xz.times(this.y_rotation));
             this.inverse().set(Mat4.inverse(this.matrix()));
             this.pos = this.camera_xz.times(vec4(0, 0, 0, 1)).to3();

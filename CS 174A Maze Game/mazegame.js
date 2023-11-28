@@ -95,10 +95,10 @@ export class MazeGame extends Base_Scene {
         this.objects = [
             // initialize with the outer walls
             // [xMin, xMax, yMin, yMax, zMin, zMax]
-            [0, this.dim_x*this.wall_length, 0, this.wall_height, -1, 1],
-            [-1, 1, 0, this.wall_height, 0, this.dim_z*this.wall_length],
-            [0, this.dim_x*this.wall_length, 0, this.wall_height, this.dim_z*this.wall_length-1, this.dim_z*this.wall_length+1],
-            [this.dim_x*this.wall_length-1, this.dim_x*this.wall_length+1, 0, this.wall_height, 0, this.dim_z*this.wall_length],
+            [0, this.dim_x*this.wall_length, 0, 2*this.wall_height, -1, 1],
+            [-1, 1, 0, 2*this.wall_height, 0, this.dim_z*this.wall_length],
+            [0, this.dim_x*this.wall_length, 0, 2*this.wall_height, this.dim_z*this.wall_length-1, this.dim_z*this.wall_length+1],
+            [this.dim_x*this.wall_length-1, this.dim_x*this.wall_length+1, 0, 2*this.wall_height, 0, this.dim_z*this.wall_length],
         ];
 
         for (let i = 0; i < 24; i++) {
