@@ -44,10 +44,11 @@ const Square = defs.Square =
         // to re-use data of the common vertices between triangles.  This makes all the vertex
         // arrays (position, normals, etc) smaller and more cache friendly.
         constructor() {
-            super("position", "normal", "texture_coord");
+            super("position", "normal", "texture_coord", "tangents");
             // Specify the 4 square corner locations, and match those up with normal vectors:
             this.arrays.position = Vector3.cast([-1, -1, 0], [1, -1, 0], [-1, 1, 0], [1, 1, 0]);
             this.arrays.normal = Vector3.cast([0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1]);
+            this.arrays.tangents = Vector3.cast([1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0]);
             // Arrange the vertices into a square shape in texture space too:
             this.arrays.texture_coord = Vector.cast([0, 0], [1, 0], [0, 1], [1, 1]);
             // Use two triangles this time, indexing into four distinct vertices:
@@ -141,7 +142,7 @@ const Cube = defs.Cube =
         // out of other Shapes).  A cube inserts six Square strips into its own arrays, using six
         // different matrices as offsets for each square.
         constructor() {
-            super("position", "normal", "texture_coord");
+            super("position", "normal", "texture_coord", "tangents");
             // Loop 3 times (for each axis), and inside loop twice (for opposing cube sides):
             for (let i = 0; i < 3; i++)
                 for (let j = 0; j < 2; j++) {
@@ -810,6 +811,93 @@ const Fake_Bump_Map = defs.Fake_Bump_Map =
                     gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
                     // Compute the final color with contributions from lights:
                     gl_FragColor.xyz += phong_model_lights( normalize( bumped_N ), vertex_worldspace );
+                  } `;
+        }
+    }
+
+const Normal_Map = defs.Normal_Map =
+    class Normal_Map extends Textured_Phong {
+        // **Normal_Map** Extends Textured_Phong, and implements normal mapping
+        vertex_glsl_code() {
+            // ********* VERTEX SHADER *********
+            return this.shared_glsl_code() + `
+                varying vec2 f_tex_coord;
+                attribute vec3 position, normal, tangents;                            
+                // Position is expressed in object coordinates.
+                attribute vec2 texture_coord;
+                
+                uniform mat4 model_transform;
+                uniform mat4 projection_camera_model_transform;
+                
+                varying vec3 T;
+                varying vec3 B;
+                varying vec3 new_cam_cent;
+                varying vec4 new_light_pos[N_LIGHTS];
+        
+                void main(){                                                                   
+                    // The vertex's final resting place (in NDCS):
+                    gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
+                    // The final normal vector in screen space.
+                    N = normalize( mat3( model_transform ) * normal / squared_scale);
+                    T = normalize( mat3( model_transform ) * tangents / squared_scale);
+                    B = normalize( mat3( model_transform ) * cross(N, T));
+                    
+                    mat3 TBN = mat3 (vec3(T.x, B.x, N.x), vec3(T.y, B.y, N.y), vec3(T.z, B.z, N.z));
+                    
+                    new_cam_cent = TBN * camera_center;
+                    vec3 new_pos = TBN * position;
+                    for (int i = 0; i < N_LIGHTS; i++) {
+                        new_light_pos[i] = vec4(TBN * light_positions_or_vectors[i].xyz, light_positions_or_vectors[i].w);
+                    }
+                    
+                    vertex_worldspace = ( model_transform * vec4( new_pos, 1.0 ) ).xyz;
+                    // Turn the per-vertex texture coordinate into an interpolated variable.
+                    f_tex_coord = texture_coord;
+                  } `;
+        }
+        /*
+        T = normalize( mat3( model_transform ) * cross(vec3(0.0, 1.0, 0.0), N));
+                        if (T == vec3(0.0, 0.0, 0.0)){
+                            T = normalize( mat3( model_transform ) * cross(vec3(1.0, 0.0, 0.0), N));
+                        }
+
+                        mat3 TBN = mat3 (T, B, N);
+
+                    norm *= TBN;
+         */
+
+        fragment_glsl_code() {
+            // ********* FRAGMENT SHADER *********
+            // A fragment is a pixel that's overlapped by the current triangle.
+            // Fragments affect the final image or get discarded due to depth.
+            return this.shared_glsl_code() + `
+                varying vec2 f_tex_coord;
+                uniform sampler2D texture;
+                uniform sampler2D normalTexture;
+                
+                varying vec3 T;
+                varying vec3 B;
+                varying vec3 new_cam_cent;
+                varying vec4 new_light_pos[N_LIGHTS];
+        
+                void main(){
+                    // Sample the texture image in the correct place:
+                    vec3 norm = texture2D(normalTexture, f_tex_coord).xyz * 2.0 - 1.0;
+                    norm = normalize(norm);
+                    
+                    vec3 result = vec3( 0.0 );
+                    for(int i = 0; i < N_LIGHTS; i++){
+                        vec3 surface_to_light_vector = new_light_pos[i].xyz - vertex_worldspace;
+        
+                        vec3 L = normalize(surface_to_light_vector);
+                        
+                        float frag_to_light_angle = clamp(dot(norm, L), 0.0, 1.0);
+                        float diffuse = frag_to_light_angle * 1.0;
+                        
+                        result += vec3(1.0) * diffuse;
+                      }
+                                                                             // Compute the final color with contributions from lights:
+                    gl_FragColor = vec4(vec3(0.5) * result, 1.0);
                   } `;
         }
     }

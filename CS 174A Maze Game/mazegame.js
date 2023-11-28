@@ -5,7 +5,7 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
 
-const {Cube, Square, Textured_Phong} = defs
+const {Cube, Square, Textured_Phong, Normal_Map, Fake_Bump_Map} = defs
 
 class Base_Scene extends Scene {
     /**
