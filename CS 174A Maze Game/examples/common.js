@@ -624,7 +624,7 @@ const Phong_Shader = defs.Phong_Shader =
                 // pixel fragment's proximity to each of the 3 vertices (barycentric interpolation).
                 varying vec3 N, vertex_worldspace;
                 // ***** PHONG SHADING HAPPENS HERE: *****                                       
-                vec3 phong_model_lights( vec3 N, vec3 vertex_worldspace, vec3 color){                                        
+                vec3 phong_model_lights( vec3 N, vec3 vertex_worldspace){                                        
                     // phong_model_lights():  Add up the lights' contributions.
                     vec3 E = normalize( camera_center - vertex_worldspace );
                     vec3 result = vec3( 0.0 );
@@ -653,7 +653,7 @@ const Phong_Shader = defs.Phong_Shader =
                         float specular = pow( max( dot( N, H ), 0.0 ), smoothness );
                         float attenuation = 1.0 / (1.0 + light_attenuation_factors[i] * distance_to_light * distance_to_light );
                         
-                        vec3 light_contribution = color * light_colors[i].xyz * diffusivity * diffuse
+                        vec3 light_contribution = shape_color.xyz * light_colors[i].xyz * diffusivity * diffuse
                                                                   + light_colors[i].xyz * specularity * specular;
                         result += attenuation * mix(vec3(0.0), light_contribution, blend_factor);
                       }
@@ -688,7 +688,7 @@ const Phong_Shader = defs.Phong_Shader =
                     // Compute an initial (ambient) color:
                     gl_FragColor = vec4( shape_color.xyz * ambient, shape_color.w );
                     // Compute the final color with contributions from lights:
-                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace, shape_color.xyz);
+                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace);
                   } `;
         }
 
@@ -798,7 +798,7 @@ const Textured_Phong = defs.Textured_Phong =
                                                                              // Compute an initial (ambient) color:
                     gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
                                                                              // Compute the final color with contributions from lights:
-                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace, tex_color.xyz);
+                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace);
                   } `;
         }
 
@@ -835,7 +835,7 @@ const Fake_Bump_Map = defs.Fake_Bump_Map =
                     // Compute an initial (ambient) color:
                     gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
                     // Compute the final color with contributions from lights:
-                    gl_FragColor.xyz += phong_model_lights( normalize( bumped_N ), vertex_worldspace, tex_color.xyz);
+                    gl_FragColor.xyz += phong_model_lights( normalize( bumped_N ), vertex_worldspace);
                   } `;
         }
     }
@@ -911,16 +911,9 @@ const Normal_Map = defs.Normal_Map =
                     mat3 TBN = mat3(T, B, N);
                     
                     vec3 norm = texture2D(normalTexture, f_tex_coord).xyz * 2.0 - 1.0;
+                    norm.y = -norm.y;
                     norm = normalize(TBN * norm);
                     
-                    gl_FragColor = vec4(tex_color.xyz * ambient, tex_color.w ); 
-                    // Compute the final color with contributions from lights:
-                    gl_FragColor.xyz += phong_model_lights( norm, vertex_worldspace, tex_color.xyz);
-                  } `;
-        }
-    }
-    /*
-
                     gl_FragColor = vec4( ( tex_color.xyz) * ambient, tex_color.w );
 
                     vec3 E = normalize( camera_center - vertex_worldspace );
@@ -948,7 +941,7 @@ const Normal_Map = defs.Normal_Map =
                         // Reflection Model, using Blinn's "halfway vector" method:
                         float diffuse  =      max( dot( N, L ), 0.0 );
                         float specular = pow( max( dot( N, H ), 0.0 ), smoothness );
-                        float attenuation = 1.0 / (1.0 + light_attenuation_factors[i] * distance_to_light * distance_to_light );
+                        float attenuation = 2.0 / (1.0 + light_attenuation_factors[i] * distance_to_light * distance_to_light );
 
                         vec3 light_contribution = tex_color.xyz * light_colors[i].xyz * diffusivity * diffuse
                                                                   + light_colors[i].xyz * specularity * specular;
@@ -956,6 +949,12 @@ const Normal_Map = defs.Normal_Map =
                       }
 
                     gl_FragColor.xyz += result;
+                  } `;
+        }
+    }
+    /*
+
+
      */
 
 
