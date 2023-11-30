@@ -68,15 +68,15 @@ const Square = defs.Square =
             let edge3 = vec3(1, 1, 0) - vec3(-1, 1, 0);
             let deltaUV3 = vec(1, 1) - vec(0, 1);
 
-            let g = 1.0/ (deltaUV1.x * deltaUV3.y - deltaUV3.x * deltaUV1.y);
+            let g = 1.0/ (deltaUV3.x * deltaUV2.y - deltaUV2.x * deltaUV3.y);
 
-            let tangent2x = f * (deltaUV3.y * edge1.x - deltaUV1.y * edge3.x);
-            let tangent2y = f * (deltaUV3.y * edge1.y - deltaUV1.y * edge3.y);
-            let tangent2z = f * (deltaUV3.y * edge1.z - deltaUV1.y * edge3.z);
+            let tangent2x = g * (deltaUV2.y * edge3.x - deltaUV3.y * edge2.x);
+            let tangent2y = g * (deltaUV2.y * edge3.y - deltaUV3.y * edge2.y);
+            let tangent2z = g * (deltaUV2.y * edge3.z - deltaUV3.y * edge2.z);
 
             this.arrays.tangents = Vector3.cast([tangent1x, tangent1y, tangent1z],
-                [(tangent1x + tangent2x)/2, (tangent1x + tangent2x)/2, (tangent1x + tangent2x)/2],
-                [(tangent1x + tangent2x)/2, (tangent1x + tangent2x)/2, (tangent1x + tangent2x)/2],
+                [(tangent1x + tangent2x)/2, (tangent1y + tangent2y)/2, (tangent1z + tangent2z)/2],
+                [(tangent1x + tangent2x)/2, (tangent1y + tangent2y)/2, (tangent1z + tangent2z)/2],
                 [tangent2x, tangent2y, tangent2z]);
         }
     }
@@ -873,6 +873,8 @@ const Normal_Map = defs.Normal_Map =
         /*
         varying vec3 new_cam_cent, new_cam_dir;
                 varying vec4 new_light_pos[N_LIGHTS];
+
+                T = normalize( mat3( model_transform ) * tangents / squared_scale);
 
 
         T = normalize( mat3( model_transform ) * cross(vec3(0.0, 1.0, 0.0), N));

@@ -214,10 +214,10 @@ export class MazeGame extends Base_Scene {
         this.draw_border(context, program_state, this.wall_length);
         floor_transform = floor_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0))
             .times(Mat4.scale(this.dim_x*this.wall_length/2, this.dim_z*this.wall_length/2, 1))
-            .times(Mat4.translation(1, 1, 0.5))
+            .times(Mat4.translation(1, 1, 1))
         this.shapes.floor.draw(context, program_state, floor_transform, this.materials.floorTexture);
 
-        ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2 - 1));
+        ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2 - 2));
         this.shapes.floor.draw(context, program_state, ceiling_transform, this.materials.ceilingTexture);
         // store the coordinates of all objects in the program_state!!!
         // then we can access these bounding boxes in common.js
