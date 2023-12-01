@@ -5,7 +5,7 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
 
-const {Cube, Square, Textured_Phong, Normal_Map, Fake_Bump_Map} = defs
+const {Cube, Square, Arch, Textured_Phong, Normal_Map, Fake_Bump_Map, Texture_Rotate, Shape_From_File} = defs
 
 class Base_Scene extends Scene {
     /**
@@ -21,8 +21,12 @@ class Base_Scene extends Scene {
             'cube': new Cube(),
             'outerwall': new Cube(),
             'floor': new Square(),
+            'arch': new Shape_From_File("assets/arch.obj"),
         };
+        // sometimes one of the textures doesn't load
+        // so we just use the previous texture
         
+
         // *** Materials
         this.materials = {
             plastic: new Material(new defs.Phong_Shader(),
@@ -46,6 +50,11 @@ class Base_Scene extends Scene {
                 color: hex_color("#ffffff"),
                 ambient: .1, diffusivity: 1, specularity: 0.1,
                 texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
+            portalTexture: new Material(new Texture_Rotate(), {
+                color: hex_color("#000000"),
+                ambient: 0.9, diffusivity: 0, specularity: 0.1,
+                texture: new Texture("assets/portal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
             flashlight: new Material(new Textured_Phong(), {
                 color: hex_color("#ffffff"),
@@ -202,6 +211,18 @@ export class MazeGame extends Base_Scene {
         this.shapes.outerwall.draw(context, program_state, wall4, this.materials.outerWallTexture);
     }
 
+    draw_finish(context, program_state, wall_length) {
+        let portal_transform = Mat4.identity().times(Mat4.translation(this.dim_x*wall_length, this.wall_height, this.dim_z*wall_length))
+                                              .times(Mat4.rotation(Math.PI/4, 0, 1, 0))
+                                              .times(Mat4.scale(this.wall_length, this.wall_length, this.wall_length))
+        let arch_transform = Mat4.identity().times(Mat4.translation((this.dim_x-0.7)*wall_length, this.wall_height-3, (this.dim_z-0.7)*wall_length))
+                                              .times(Mat4.rotation(Math.PI/4, 0, 1, 0))
+                                              .times(Mat4.scale(this.wall_length, this.wall_length, this.wall_length))
+                                              
+        this.shapes.cube.draw(context, program_state, portal_transform, this.materials.portalTexture);
+        this.shapes.arch.draw(context, program_state, arch_transform, this.materials.innerWallTexture);
+    }
+
     display(context, program_state) {
         super.display(context, program_state);
         // since walls are bricks, this represents 7 x 7 x height blocks
@@ -222,6 +243,8 @@ export class MazeGame extends Base_Scene {
         // store the coordinates of all objects in the program_state!!!
         // then we can access these bounding boxes in common.js
         // to check for collisions
+
+        this.draw_finish(context, program_state, this.wall_length);
 
         program_state.bboxes = this.objects;
     }

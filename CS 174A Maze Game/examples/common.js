@@ -156,6 +156,120 @@ const Cube = defs.Cube =
         }
     }
 
+const Shape_From_File = defs.Shape_From_File =
+    class Shape_From_File extends Shape {                                   // **Shape_From_File** is a versatile standalone Shape that imports
+                                                                                // all its arrays' data from an .obj 3D model file.
+        constructor(filename) {
+            super("position", "normal", "texture_coord");
+            // Begin downloading the mesh. Once that completes, return
+            // control to our parse_into_mesh function.
+            this.load_file(filename);
+        }
+
+        load_file(filename) {                             // Request the external file and wait for it to load.
+            // Failure mode:  Loads an empty shape.
+            return fetch(filename)
+                .then(response => {
+                    if (response.ok) return Promise.resolve(response.text())
+                    else return Promise.reject(response.status)
+                })
+                .then(obj_file_contents => this.parse_into_mesh(obj_file_contents))
+                .catch(error => {
+                    this.copy_onto_graphics_card(this.gl);
+                })
+        }
+
+        parse_into_mesh(data) {                           // Adapted from the "webgl-obj-loader.js" library found online:
+            var verts = [], vertNormals = [], textures = [], unpacked = {};
+
+            unpacked.verts = [];
+            unpacked.norms = [];
+            unpacked.textures = [];
+            unpacked.hashindices = {};
+            unpacked.indices = [];
+            unpacked.index = 0;
+
+            var lines = data.split('\n');
+
+            var VERTEX_RE = /^v\s/;
+            var NORMAL_RE = /^vn\s/;
+            var TEXTURE_RE = /^vt\s/;
+            var FACE_RE = /^f\s/;
+            var WHITESPACE_RE = /\s+/;
+
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i].trim();
+                var elements = line.split(WHITESPACE_RE);
+                elements.shift();
+
+                if (VERTEX_RE.test(line)) verts.push.apply(verts, elements);
+                else if (NORMAL_RE.test(line)) vertNormals.push.apply(vertNormals, elements);
+                else if (TEXTURE_RE.test(line)) textures.push.apply(textures, elements);
+                else if (FACE_RE.test(line)) {
+                    var quad = false;
+                    for (var j = 0, eleLen = elements.length; j < eleLen; j++) {
+                        if (j === 3 && !quad) {
+                            j = 2;
+                            quad = true;
+                        }
+                        if (elements[j] in unpacked.hashindices)
+                            unpacked.indices.push(unpacked.hashindices[elements[j]]);
+                        else {
+                            var vertex = elements[j].split('/');
+
+                            unpacked.verts.push(+verts[(vertex[0] - 1) * 3 + 0]);
+                            unpacked.verts.push(+verts[(vertex[0] - 1) * 3 + 1]);
+                            unpacked.verts.push(+verts[(vertex[0] - 1) * 3 + 2]);
+
+                            if (textures.length) {
+                                unpacked.textures.push(+textures[((vertex[1] - 1) || vertex[0]) * 2 + 0]);
+                                unpacked.textures.push(+textures[((vertex[1] - 1) || vertex[0]) * 2 + 1]);
+                            }
+
+                            unpacked.norms.push(+vertNormals[((vertex[2] - 1) || vertex[0]) * 3 + 0]);
+                            unpacked.norms.push(+vertNormals[((vertex[2] - 1) || vertex[0]) * 3 + 1]);
+                            unpacked.norms.push(+vertNormals[((vertex[2] - 1) || vertex[0]) * 3 + 2]);
+
+                            unpacked.hashindices[elements[j]] = unpacked.index;
+                            unpacked.indices.push(unpacked.index);
+                            unpacked.index += 1;
+                        }
+                        if (j === 3 && quad) unpacked.indices.push(unpacked.hashindices[elements[0]]);
+                    }
+                }
+            }
+            {
+                const {verts, norms, textures} = unpacked;
+                for (var j = 0; j < verts.length / 3; j++) {
+                    this.arrays.position.push(vec3(verts[3 * j], verts[3 * j + 1], verts[3 * j + 2]));
+                    this.arrays.normal.push(vec3(norms[3 * j], norms[3 * j + 1], norms[3 * j + 2]));
+                    this.arrays.texture_coord.push(vec(textures[2 * j], textures[2 * j + 1]));
+                }
+                this.indices = unpacked.indices;
+            }
+            this.normalize_positions(false);
+            this.ready = true;
+        }
+
+        draw(context, program_state, model_transform, material) {               // draw(): Same as always for shapes, but cancel all
+            // attempts to draw the shape before it loads:
+            if (this.ready)
+                super.draw(context, program_state, model_transform, material);
+        }
+    }
+
+const Arch = defs.Arch =
+    class Arch extends Shape {
+        // **Cube** A closed 3D shape, and the first example of a compound shape (a Shape constructed
+        // out of other Shapes).  A cube inserts six Square strips into its own arrays, using six
+        // different matrices as offsets for each square.
+        constructor() {
+            super("position", "normal", "texture_coord", "tangents");
+            // create a simple arch. two long rectangles and a semi circle at the top
+        }
+    }
+
+
 
 const Subdivision_Sphere = defs.Subdivision_Sphere =
     class Subdivision_Sphere extends Shape {
@@ -901,6 +1015,50 @@ const Normal_Map = defs.Normal_Map =
                   } `;
         }
     }
+const Texture_Rotate = defs.Texture_Rotate =
+    class Texture_Rotate extends Textured_Phong {
+        // TODO:  Modify the shader below (right now it's just the same fragment shader as Textured_Phong) for requirement #7.
+        update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
+            // update_GPU(): Add a little more to the base class's version of this method.
+            super.update_GPU(context, gpu_addresses, gpu_state, model_transform, material);
+            // Updated for assignment 4
+            context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
+            if (material.texture && material.texture.ready) {
+                // Select texture unit 0 for the fragment shader Sampler2D uniform called "texture":
+                context.uniform1i(gpu_addresses.texture, 0);
+                // For this draw, use the texture image from correct the GPU buffer:
+                material.texture.activate(context);
+            }
+        }
+
+        fragment_glsl_code() {
+            return this.shared_glsl_code() + `
+                varying vec2 f_tex_coord;
+                uniform sampler2D texture;
+                uniform float animation_time;
+                void main(){
+                    // Calculate rotation around the center of the texture
+                    float angle = 0.25 * 3.141592653589793 * animation_time;
+                    mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+
+                    // Offset the texture coordinates to rotate around the center
+                    vec2 center = vec2(0.5, 0.5);
+                    vec2 centered_tex_coord = f_tex_coord - center; // Translate point to origin
+                    centered_tex_coord = rotation * centered_tex_coord; // Rotate point
+                    centered_tex_coord += center; // Translate point back
+
+                    // Sample the texture image in the correct place:
+                    vec4 tex_color = texture2D(texture, centered_tex_coord);
+                    if (tex_color.w < .01) discard;
+                    // Compute an initial (ambient) color:
+                    gl_FragColor = vec4((tex_color.xyz + shape_color.xyz) * ambient, shape_color.w * tex_color.w);
+                    // Compute the final color with contributions from lights:      
+                    gl_FragColor.xyz += phong_model_lights(normalize(N), vertex_worldspace);
+                }
+            `;
+        }
+
+    }
 
 
 const Movement_Controls = defs.Movement_Controls =
@@ -928,7 +1086,7 @@ const Movement_Controls = defs.Movement_Controls =
             this.isJumping = false;
             this.jumpTime = 0;
             this.y_rotation = Mat4.identity();
-            this.camera_xz = Mat4.identity().times(Mat4.translation(5, 5, 5));
+            this.camera_xz = Mat4.identity().times(Mat4.translation(122, 5, 122));
             this.camera_queue = [];
         }
 
@@ -1080,6 +1238,9 @@ const Movement_Controls = defs.Movement_Controls =
                 point[1] - margin, point[1] + margin,
                 point[2] - margin, point[2] + margin
             ];
+
+            // check if the camera is in the "finish", which is the bottom right
+            // square of the maze
 
             // check if there's a collision
             if (this.check_is_collision(camera_box, box)) {
