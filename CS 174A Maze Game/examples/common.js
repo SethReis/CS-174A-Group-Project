@@ -48,10 +48,36 @@ const Square = defs.Square =
             // Specify the 4 square corner locations, and match those up with normal vectors:
             this.arrays.position = Vector3.cast([-1, -1, 0], [1, -1, 0], [-1, 1, 0], [1, 1, 0]);
             this.arrays.normal = Vector3.cast([0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1]);
-            this.arrays.tangents = Vector3.cast([1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0]);
+
             // Arrange the vertices into a square shape in texture space too:
             this.arrays.texture_coord = Vector.cast([0, 0], [1, 0], [0, 1], [1, 1]);
             // Use two triangles this time, indexing into four distinct vertices:
+
+            let edge1 = vec3(-1, -1, 0).minus(vec3(-1, 1, 0));
+            let edge2 = vec3(1, -1, 0).minus(vec3(-1, 1, 0));
+            let deltaUV1 = vec(0, 0).minus(vec(0, 1));
+            let deltaUV2 = vec(1, 0).minus(vec(0, 1));
+
+            let f = 1.0/ (deltaUV1[0] * deltaUV2[1] - deltaUV2[0] * deltaUV1[1]);
+
+            let tangent1x = f * (deltaUV2[1] * edge1[0] - deltaUV1[1] * edge2[0]);
+            let tangent1y = f * (deltaUV2[1] * edge1[1] - deltaUV1[1] * edge2[1]);
+            let tangent1z = f * (deltaUV2[1] * edge1[2] - deltaUV1[1] * edge2[2]);
+
+            let edge3 = vec3(1, 1, 0).minus(vec3(-1, 1, 0));
+            let deltaUV3 = vec(1, 1).minus(vec(0, 1));
+
+            let g = 1.0/ (deltaUV3[0] * deltaUV2[1] - deltaUV2[0] * deltaUV3[1]);
+
+            let tangent2x = g * (deltaUV2[1] * edge3[0] - deltaUV3[1] * edge2[0]);
+            let tangent2y = g * (deltaUV2[1] * edge3[1] - deltaUV3[1] * edge2[1]);
+            let tangent2z = g * (deltaUV2[1] * edge3[2] - deltaUV3[1] * edge2[2]);
+
+            this.arrays.tangents = Vector3.cast([tangent1x, tangent1y, tangent1z],
+                [(tangent1x + tangent2x)/2, (tangent1y + tangent2y)/2, (tangent1z + tangent2z)/2],
+                [(tangent1x + tangent2x)/2, (tangent1y + tangent2y)/2, (tangent1z + tangent2z)/2],
+                [tangent2x, tangent2y, tangent2z]);
+
             this.indices.push(0, 1, 2, 1, 3, 2);
         }
     }
@@ -713,7 +739,7 @@ const Phong_Shader = defs.Phong_Shader =
                 // pixel fragment's proximity to each of the 3 vertices (barycentric interpolation).
                 varying vec3 N, vertex_worldspace;
                 // ***** PHONG SHADING HAPPENS HERE: *****                                       
-                vec3 phong_model_lights( vec3 N, vec3 vertex_worldspace ){                                        
+                vec3 phong_model_lights( vec3 N, vec3 vertex_worldspace){                                        
                     // phong_model_lights():  Add up the lights' contributions.
                     vec3 E = normalize( camera_center - vertex_worldspace );
                     vec3 result = vec3( 0.0 );
@@ -777,7 +803,7 @@ const Phong_Shader = defs.Phong_Shader =
                     // Compute an initial (ambient) color:
                     gl_FragColor = vec4( shape_color.xyz * ambient, shape_color.w );
                     // Compute the final color with contributions from lights:
-                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
+                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace);
                   } `;
         }
 
@@ -794,6 +820,7 @@ const Phong_Shader = defs.Phong_Shader =
         send_gpu_state(gl, gpu, gpu_state, model_transform) {
             // send_gpu_state():  Send the state of our whole drawing context to the GPU.
             const O = vec4(0, 0, 0, 1), camera_center = gpu_state.camera_transform.times(O).to3();
+            gl.uniform3fv(gpu.camera_center, camera_center)
 
             // added sending the eye vector to GPU
             const E = vec4(0, 0, -1, 0), inverse_camera_direction = gpu_state.camera_transform.times(E).to3()
@@ -887,7 +914,7 @@ const Textured_Phong = defs.Textured_Phong =
                                                                              // Compute an initial (ambient) color:
                     gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
                                                                              // Compute the final color with contributions from lights:
-                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
+                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace);
                   } `;
         }
 
@@ -924,7 +951,7 @@ const Fake_Bump_Map = defs.Fake_Bump_Map =
                     // Compute an initial (ambient) color:
                     gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
                     // Compute the final color with contributions from lights:
-                    gl_FragColor.xyz += phong_model_lights( normalize( bumped_N ), vertex_worldspace );
+                    gl_FragColor.xyz += phong_model_lights( normalize( bumped_N ), vertex_worldspace);
                   } `;
         }
     }
@@ -945,8 +972,6 @@ const Normal_Map = defs.Normal_Map =
                 
                 varying vec3 T;
                 varying vec3 B;
-                varying vec3 new_cam_cent;
-                varying vec4 new_light_pos[N_LIGHTS];
         
                 void main(){                                                                   
                     // The vertex's final resting place (in NDCS):
@@ -956,20 +981,18 @@ const Normal_Map = defs.Normal_Map =
                     T = normalize( mat3( model_transform ) * tangents / squared_scale);
                     B = normalize( mat3( model_transform ) * cross(N, T));
                     
-                    mat3 TBN = mat3 (vec3(T.x, B.x, N.x), vec3(T.y, B.y, N.y), vec3(T.z, B.z, N.z));
-                    
-                    new_cam_cent = TBN * camera_center;
-                    vec3 new_pos = TBN * position;
-                    for (int i = 0; i < N_LIGHTS; i++) {
-                        new_light_pos[i] = vec4(TBN * light_positions_or_vectors[i].xyz, light_positions_or_vectors[i].w);
-                    }
-                    
-                    vertex_worldspace = ( model_transform * vec4( new_pos, 1.0 ) ).xyz;
+                    vertex_worldspace = ( model_transform * vec4( position, 1.0 ) ).xyz;
                     // Turn the per-vertex texture coordinate into an interpolated variable.
                     f_tex_coord = texture_coord;
                   } `;
         }
         /*
+        varying vec3 new_cam_cent, new_cam_dir;
+                varying vec4 new_light_pos[N_LIGHTS];
+
+                T = normalize( mat3( model_transform ) * tangents / squared_scale);
+
+
         T = normalize( mat3( model_transform ) * cross(vec3(0.0, 1.0, 0.0), N));
                         if (T == vec3(0.0, 0.0, 0.0)){
                             T = normalize( mat3( model_transform ) * cross(vec3(1.0, 0.0, 0.0), N));
@@ -978,6 +1001,15 @@ const Normal_Map = defs.Normal_Map =
                         mat3 TBN = mat3 (T, B, N);
 
                     norm *= TBN;
+
+         mat3 TBN = mat3 (vec3(T.x, B.x, N.x), vec3(T.y, B.y, N.y), vec3(T.z, B.z, N.z));
+
+                    new_cam_cent = TBN * camera_center;
+                    new_cam_dir = TBN * camera_direction;
+                    vec3 new_pos = TBN * position;
+                    for (int i = 0; i < N_LIGHTS; i++) {
+                        new_light_pos[i] = vec4(TBN * light_positions_or_vectors[i].xyz, light_positions_or_vectors[i].w);
+                    }
          */
 
         fragment_glsl_code() {
@@ -991,28 +1023,58 @@ const Normal_Map = defs.Normal_Map =
                 
                 varying vec3 T;
                 varying vec3 B;
-                varying vec3 new_cam_cent;
-                varying vec4 new_light_pos[N_LIGHTS];
         
                 void main(){
-                    // Sample the texture image in the correct place:
-                    vec3 norm = texture2D(normalTexture, f_tex_coord).xyz * 2.0 - 1.0;
-                    norm = normalize(norm);
+                    vec4 tex_color = texture2D( texture, f_tex_coord );
+                    mat3 TBN = mat3(T, B, N);
                     
+                    vec3 norm = texture2D(normalTexture, f_tex_coord).xyz * 2.0 - 1.0;
+                    norm = normalize(TBN * norm);
+                    
+                    gl_FragColor = vec4( ( tex_color.xyz) * ambient, tex_color.w );
+
+                    vec3 E = normalize( camera_center - vertex_worldspace );
                     vec3 result = vec3( 0.0 );
                     for(int i = 0; i < N_LIGHTS; i++){
-                        vec3 surface_to_light_vector = new_light_pos[i].xyz - vertex_worldspace;
-        
-                        vec3 L = normalize(surface_to_light_vector);
+                        // Lights store homogeneous coords - either a position or vector.  If w is 0, the
+                        // light will appear directional (uniform direction from all points), and we
+                        // simply obtain a vector towards the light by directly using the stored value.
+                        // Otherwise if w is 1 it will appear as a point light -- compute the vector to
+                        // the point light's location from the current surface point.  In either case,
+                        // fade (attenuate) the light as the vector needed to reach it gets longer.
+                        vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz -
+                                                       light_positions_or_vectors[i].w * vertex_worldspace;
+                        float distance_to_light = length( surface_to_light_vector );
+                        vec3 L = normalize( surface_to_light_vector );
+
+                        // added circular center for light with blend factor
+                        vec3 u_lightDirection = normalize(camera_direction);
+                        float dotFromDirection = dot(L, -u_lightDirection);
+                        float blend_factor = smoothstep(u_limit - 0.03, u_limit, dotFromDirection);
                         
-                        float frag_to_light_angle = clamp(dot(norm, L), 0.0, 1.0);
-                        float diffuse = frag_to_light_angle * 1.0;
-                        
-                        result += vec3(1.0) * diffuse;
+                        vec3 H = normalize( L + E );
+                        // Compute the diffuse and specular components from the Phong
+                        // Reflection Model, using Blinn's "halfway vector" method:
+                        float diffuse  =      max( dot( norm, L ), 0.0 );
+                        float specular = pow( max( dot( norm, H ), 0.0 ), smoothness );
+                        float attenuation = 1.25 / (1.0 + light_attenuation_factors[i] * distance_to_light * distance_to_light );
+
+                        vec3 light_contribution = tex_color.xyz * light_colors[i].xyz * diffusivity * diffuse
+                                                                  + light_colors[i].xyz * specularity * specular;
+                        result += attenuation * mix(vec3(0.0), light_contribution, blend_factor);
                       }
-                                                                             // Compute the final color with contributions from lights:
-                    gl_FragColor = vec4(vec3(0.5) * result, 1.0);
+
+                    gl_FragColor.xyz += result;
                   } `;
+        }
+        update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
+            // update_GPU(): Add a little more to the base class's version of this method.
+            super.update_GPU(context, gpu_addresses, gpu_state, model_transform, material);
+
+            if (material.normalTexture && material.normalTexture.ready) {
+                context.uniform1i(gpu_addresses.normalTexture, 1);
+                material.normalTexture.activate(context, 1);
+            }
         }
     }
 const Texture_Rotate = defs.Texture_Rotate =
