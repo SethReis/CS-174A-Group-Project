@@ -284,19 +284,6 @@ const Shape_From_File = defs.Shape_From_File =
         }
     }
 
-const Arch = defs.Arch =
-    class Arch extends Shape {
-        // **Cube** A closed 3D shape, and the first example of a compound shape (a Shape constructed
-        // out of other Shapes).  A cube inserts six Square strips into its own arrays, using six
-        // different matrices as offsets for each square.
-        constructor() {
-            super("position", "normal", "texture_coord", "tangents");
-            // create a simple arch. two long rectangles and a semi circle at the top
-        }
-    }
-
-
-
 const Subdivision_Sphere = defs.Subdivision_Sphere =
     class Subdivision_Sphere extends Shape {
         // **Subdivision_Sphere** defines a Sphere surface, with nice uniform triangles.  A subdivision surface
@@ -931,6 +918,50 @@ const Textured_Phong = defs.Textured_Phong =
         }
     }
 
+const Texture_Rotate = defs.Texture_Rotate =
+    class Texture_Rotate extends Textured_Phong {
+        // TODO:  Modify the shader below (right now it's just the same fragment shader as Textured_Phong) for requirement #7.
+        update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
+            // update_GPU(): Add a little more to the base class's version of this method.
+            super.update_GPU(context, gpu_addresses, gpu_state, model_transform, material);
+            // Updated for assignment 4
+            context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
+            if (material.texture && material.texture.ready) {
+                // Select texture unit 0 for the fragment shader Sampler2D uniform called "texture":
+                context.uniform1i(gpu_addresses.texture, 0);
+                // For this draw, use the texture image from correct the GPU buffer:
+                material.texture.activate(context);
+            }
+        }
+
+        fragment_glsl_code() {
+            return this.shared_glsl_code() + `
+                varying vec2 f_tex_coord;
+                uniform sampler2D texture;
+                uniform float animation_time;
+                void main(){
+                    // Calculate rotation around the center of the texture
+                    float angle = 0.25 * 3.141592653589793 * animation_time;
+                    mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+
+                    // Offset the texture coordinates to rotate around the center
+                    vec2 center = vec2(0.5, 0.5);
+                    vec2 centered_tex_coord = f_tex_coord - center; // Translate point to origin
+                    centered_tex_coord = rotation * centered_tex_coord; // Rotate point
+                    centered_tex_coord += center; // Translate point back
+
+                    // Sample the texture image in the correct place:
+                    vec4 tex_color = texture2D(texture, centered_tex_coord);
+                    if (tex_color.w < .01) discard;
+                    // Compute an initial (ambient) color:
+                    gl_FragColor = vec4((tex_color.xyz + shape_color.xyz) * ambient, shape_color.w * tex_color.w);
+                    // Compute the final color with contributions from lights:      
+                    gl_FragColor.xyz += phong_model_lights(normalize(N), vertex_worldspace);
+                }
+            `;
+        }
+
+    }
 
 const Fake_Bump_Map = defs.Fake_Bump_Map =
     class Fake_Bump_Map extends Textured_Phong {
@@ -1077,50 +1108,10 @@ const Normal_Map = defs.Normal_Map =
             }
         }
     }
-const Texture_Rotate = defs.Texture_Rotate =
-    class Texture_Rotate extends Textured_Phong {
-        // TODO:  Modify the shader below (right now it's just the same fragment shader as Textured_Phong) for requirement #7.
-        update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
-            // update_GPU(): Add a little more to the base class's version of this method.
-            super.update_GPU(context, gpu_addresses, gpu_state, model_transform, material);
-            // Updated for assignment 4
-            context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
-            if (material.texture && material.texture.ready) {
-                // Select texture unit 0 for the fragment shader Sampler2D uniform called "texture":
-                context.uniform1i(gpu_addresses.texture, 0);
-                // For this draw, use the texture image from correct the GPU buffer:
-                material.texture.activate(context);
-            }
-        }
+    /*
 
-        fragment_glsl_code() {
-            return this.shared_glsl_code() + `
-                varying vec2 f_tex_coord;
-                uniform sampler2D texture;
-                uniform float animation_time;
-                void main(){
-                    // Calculate rotation around the center of the texture
-                    float angle = 0.25 * 3.141592653589793 * animation_time;
-                    mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
 
-                    // Offset the texture coordinates to rotate around the center
-                    vec2 center = vec2(0.5, 0.5);
-                    vec2 centered_tex_coord = f_tex_coord - center; // Translate point to origin
-                    centered_tex_coord = rotation * centered_tex_coord; // Rotate point
-                    centered_tex_coord += center; // Translate point back
-
-                    // Sample the texture image in the correct place:
-                    vec4 tex_color = texture2D(texture, centered_tex_coord);
-                    if (tex_color.w < .01) discard;
-                    // Compute an initial (ambient) color:
-                    gl_FragColor = vec4((tex_color.xyz + shape_color.xyz) * ambient, shape_color.w * tex_color.w);
-                    // Compute the final color with contributions from lights:      
-                    gl_FragColor.xyz += phong_model_lights(normalize(N), vertex_worldspace);
-                }
-            `;
-        }
-
-    }
+     */
 
 
 const Movement_Controls = defs.Movement_Controls =
@@ -1148,7 +1139,9 @@ const Movement_Controls = defs.Movement_Controls =
             this.isJumping = false;
             this.jumpTime = 0;
             this.y_rotation = Mat4.identity();
-            this.camera_xz = Mat4.identity().times(Mat4.translation(122, 5, 122));
+            this.init_look = Mat4.identity().times(Mat4.translation(5, 5, 5))
+                                            .times(Mat4.rotation(5*Math.PI/4, 0, 1, 0));
+            this.camera_xz = Mat4.identity().times(this.init_look);
             this.camera_queue = [];
         }
 
@@ -1293,7 +1286,7 @@ const Movement_Controls = defs.Movement_Controls =
             }
         }
 
-        get_collision_info(camera, box, margin) {
+        get_collision_info(camera, box, margin, graphics_state) {
             const point = camera.times(vec4(0, 0, 0, 1)).to3();
             const camera_box = [
                 point[0] - margin, point[0] + margin,
@@ -1301,8 +1294,14 @@ const Movement_Controls = defs.Movement_Controls =
                 point[2] - margin, point[2] + margin
             ];
 
-            // check if the camera is in the "finish", which is the bottom right
-            // square of the maze
+            const dim_x = graphics_state.dim_x;
+            const dim_z = graphics_state.dim_z;
+            const wall_length = graphics_state.wall_length;
+            if (point[0] + point[2] >= (((dim_x - 1)*wall_length + (dim_z - 1)*wall_length)) + 3) {
+                this.camera_xz = this.init_look;
+                graphics_state.won = true;
+                return;
+            }
 
             // check if there's a collision
             if (this.check_is_collision(camera_box, box)) {
@@ -1359,7 +1358,7 @@ const Movement_Controls = defs.Movement_Controls =
                 for (let i = 0; i < objects.length; i++) {
                     const obj = objects[i];
                     // collision margin of 1.3
-                    let collide_result = this.get_collision_info(new_pos, obj, c_margin);
+                    let collide_result = this.get_collision_info(new_pos, obj, c_margin, graphics_state);
                     if (collide_result != false) {
                         collisions.push(collide_result);
                     }
@@ -1446,6 +1445,10 @@ const Movement_Controls = defs.Movement_Controls =
             const m = this.speed_multiplier * this.meters_per_frame,
                 r = this.speed_multiplier * this.radians_per_frame;
 
+            if (graphics_state.maze_reset) {
+                this.camera_xz = this.init_look;
+                graphics_state.maze_reset = false;
+            }
 
             if (this.will_take_over_graphics_state) {
                 this.reset(graphics_state);

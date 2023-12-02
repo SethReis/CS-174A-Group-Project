@@ -5,7 +5,7 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
 
-const {Cube, Square, Arch, Textured_Phong, Normal_Map, Fake_Bump_Map, Texture_Rotate, Shape_From_File} = defs
+const {Cube, Textured_Phong, Normal_Map, Texture_Rotate, Shape_From_File} = defs
 
 class Base_Scene extends Scene {
     /**
@@ -20,13 +20,10 @@ class Base_Scene extends Scene {
         this.shapes = {
             'cube': new Cube(),
             'outerwall': new Cube(),
-            'floor': new Square(),
+            'floor': new Cube(),
             'arch': new Shape_From_File("assets/arch.obj"),
         };
-        // sometimes one of the textures doesn't load
-        // so we just use the previous texture
         
-
         // *** Materials
         this.materials = {
             plastic: new Material(new defs.Phong_Shader(),
@@ -51,15 +48,20 @@ class Base_Scene extends Scene {
                 texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR"),
                 normalTexture: new Texture("assets/metalceiling_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            portalTexture: new Material(new Texture_Rotate(), {
-                color: hex_color("#000000"),
-                ambient: 0.9, diffusivity: 0, specularity: 0.1,
-                texture: new Texture("assets/portal.jpg", "LINEAR_MIPMAP_LINEAR")
-            }),
             flashlight: new Material(new Textured_Phong(), {
                 color: hex_color("#ffffff"),
                 ambient: 1, diffusivity: 1, specularity: 1,
-                texture: new Texture("assets/FlashlightTexture.png", "LINEAR_MIPMAP_LINEAR")
+                texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
+            portalTexture: new Material(new Texture_Rotate(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 1, specularity: 1,
+                texture: new Texture("assets/portal.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
+            archTexture: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.15, diffusivity: 0.5, specularity: 0.5,
+                texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
         };
 
@@ -87,6 +89,8 @@ class Base_Scene extends Scene {
             x = 0 }
 
         // *** Lights: *** Values of vector or point lights.
+        const light_position = vec4(120, 1, 120, 1);
+
         const O = vec4(0, 0, 0, 1), camera_center = program_state.camera_transform.times(O);
         program_state.lights = [new Light(camera_center, color(1, 1, 1, 1), x)];
     }
@@ -101,10 +105,14 @@ export class MazeGame extends Base_Scene {
      */
     constructor() {
         super();
+        this.maze_was_reset = false;
         this.dim_x = 12;
         this.dim_z = 12;
+        this.win_count = 0;
         this.wall_height = 5;
         this.wall_length = 11;
+        this.time_elapsed = 0;
+        this.best_time = undefined;
         this.maze = new Maze(this.dim_x, this.dim_z);
         this.grid = this.maze.getGrid();
         this.obj_set = new Set();
@@ -117,10 +125,31 @@ export class MazeGame extends Base_Scene {
             [this.dim_x*this.wall_length-1, this.dim_x*this.wall_length+1, 0, 2*this.wall_height, 0, this.dim_z*this.wall_length],
         ];
 
+        // Maze floor and wall reset
         for (let i = 0; i < 24; i++) {
             this.shapes.outerwall.arrays.texture_coord[i] = vec((i % 2) * this.wall_length, Math.floor(i / 2) % 2);
-            this.shapes.floor.arrays.texture_coord[i] = vec((i % 2) * 25, (Math.floor(i / 2) % 2) * 25);
+            this.shapes.floor.arrays.texture_coord[i] = vec((i % 2) * (this.dim_x*2+1), (Math.floor(i / 2) % 2) * (this.dim_x*2+1));
         }
+    }
+
+    reset_maze(dim_x, dim_z) {
+        this.dim_x = dim_x;
+        this.dim_z = dim_z;
+        this.time_elapsed = 0;
+        this.maze = new Maze(this.dim_x, this.dim_z);
+        this.grid = this.maze.getGrid();
+        this.obj_set = new Set();
+        this.objects = [
+            // initialize with the outer walls
+            // [xMin, xMax, yMin, yMax, zMin, zMax]
+            [0, this.dim_x*this.wall_length, 0, 2*this.wall_height, -1, 1],
+            [-1, 1, 0, 2*this.wall_height, 0, this.dim_z*this.wall_length],
+            [0, this.dim_x*this.wall_length, 0, 2*this.wall_height, this.dim_z*this.wall_length-1, this.dim_z*this.wall_length+1],
+            [this.dim_x*this.wall_length-1, this.dim_x*this.wall_length+1, 0, 2*this.wall_height, 0, this.dim_z*this.wall_length],
+        ];
+        this.maze_was_reset = true;
+
+        // TODO: fix maze floor and wall reset on dimension change
     }
     
     set_colors() {
@@ -130,6 +159,32 @@ export class MazeGame extends Base_Scene {
     }
 
     make_control_panel() {
+        this.live_string(box => {
+            box.textContent = "Win Count: " + (this.win_count);
+        });
+        this.new_line();
+        this.live_string(box => {
+            box.textContent = "Time Elapsed: " + (this.time_elapsed).toFixed(2) + " seconds";
+        });
+        this.new_line();
+        this.live_string(box => {
+            box.textContent = "Best Time: " + (this.best_time == undefined ? "None" : this.best_time + " seconds");
+        });
+        this.new_line();
+        this.live_string(box => {
+            box.textContent = "Current Difficulty: " + (
+                this.dim_x == 6 ? "Easy" : this.dim_x == 12 ? "Medium" : "Hard"
+            );
+        });
+        this.new_line();
+        this.live_string(box => {
+            box.textContent = "Reset Maze:";
+        });
+        this.standard_button("Easy", () => this.reset_maze(6, 6));
+        this.standard_button("Medium", () => this.reset_maze(12, 12));
+        this.standard_button("Hard", () => this.reset_maze(16, 16))
+        this.new_line();
+        this.new_line();
         this.key_triggered_button("Toggle Flashlight", ["f"], () => this.toggleFlashlight());
     }
 
@@ -211,6 +266,7 @@ export class MazeGame extends Base_Scene {
         this.shapes.outerwall.draw(context, program_state, wall4, this.materials.outerWallTexture);
     }
 
+
     draw_finish(context, program_state, wall_length) {
         let portal_transform = Mat4.identity().times(Mat4.translation(this.dim_x*wall_length, this.wall_height, this.dim_z*wall_length))
                                               .times(Mat4.rotation(Math.PI/4, 0, 1, 0))
@@ -220,16 +276,31 @@ export class MazeGame extends Base_Scene {
                                               .times(Mat4.scale(this.wall_length, this.wall_length, this.wall_length))
                                               
         this.shapes.cube.draw(context, program_state, portal_transform, this.materials.portalTexture);
-        this.shapes.arch.draw(context, program_state, arch_transform, this.materials.innerWallTexture);
+        this.shapes.arch.draw(context, program_state, arch_transform, this.materials.archTexture);
     }
 
     display(context, program_state) {
         super.display(context, program_state);
+        if (program_state.won == true) {
+            this.win_count += 1;
+            if (this.best_time == undefined || this.time_elapsed < this.best_time) {
+                this.best_time = this.time_elapsed.toFixed(2);
+            }
+            this.time_elapsed = 0;
+            program_state.won = false;
+        }
+        if (this.maze_was_reset) {
+            program_state.maze_reset = true;
+            this.maze_was_reset = false;
+        }
         // since walls are bricks, this represents 7 x 7 x height blocks
         let model_transform = Mat4.identity();
         let floor_transform = Mat4.identity();
 
         const t = this.t = program_state.animation_time / 3000;
+        const dt = program_state.animation_delta_time / 1000;
+        this.time_elapsed += dt;
+        
         this.draw_walls(context, program_state, model_transform, this.wall_length);
         this.draw_border(context, program_state, this.wall_length);
         floor_transform = floor_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0))
@@ -242,9 +313,10 @@ export class MazeGame extends Base_Scene {
         // store the coordinates of all objects in the program_state!!!
         // then we can access these bounding boxes in common.js
         // to check for collisions
-
         this.draw_finish(context, program_state, this.wall_length);
-
         program_state.bboxes = this.objects;
+        program_state.dim_x = this.dim_x;
+        program_state.dim_z = this.dim_z;
+        program_state.wall_length = this.wall_length;
     }
 }
