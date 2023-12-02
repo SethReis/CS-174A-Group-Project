@@ -77,6 +77,7 @@ export class Maze {
                 }
             }
         }
+        console.log(grid);
         return grid;
     }
 }

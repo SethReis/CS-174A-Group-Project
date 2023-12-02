@@ -1,5 +1,7 @@
 import {defs, tiny} from './examples/common.js';
 import { Maze } from './mazegen.js';
+import { Mob } from './mob.js';
+import { Shape_From_File } from './examples/obj-file-demo.js';
 
 const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
@@ -21,12 +23,22 @@ class Base_Scene extends Scene {
             'cube': new Cube(),
             'outerwall': new Cube(),
             'floor': new Square(),
+            'rat_left_step': new Shape_From_File("assets/ratleft1.obj"),
+            'rat_right_step': new Shape_From_File("assets/ratright1.obj"),
         };
+
+        // MOB
+        this.mob = new Mob({ x: 0, y: 0, z: 0 }); // Set the initial position of the mob
 
         // *** Materials
         this.materials = {
             plastic: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
+            ratTexture: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/rattexture.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
             innerWallTexture: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
                 ambient: 1, diffusivity: 0.1, specularity: 0.1,
@@ -186,6 +198,46 @@ export class MazeGame extends Base_Scene {
         this.shapes.outerwall.draw(context, program_state, wall4, this.materials.outerWallTexture);
     }
 
+    draw_mob(context, program_state, model_transform, block_width, position, direction) {
+        let cube_x = position.x * block_width + block_width / 2;
+        let cube_z = position.z * block_width + block_width / 2;
+        let cube_y = block_width / 2;  // This places the base of the rat on the ground
+
+        // Create the transformation for the rat
+        let cube_transform = model_transform
+            .times(Mat4.translation(cube_x, (block_width/4), cube_z))
+            .times(Mat4.scale((block_width/4) / 2, (block_width/4) / 2, (block_width/4) / 2))
+            .times(Mat4.translation(0, -1.5, 0));
+
+        // Depending on the direction, rotate the rat
+        switch (direction) {
+            case 'up':
+                cube_transform = cube_transform.times(Mat4.rotation(Math.PI/2, 0, 1, 0));
+                break;
+            case 'down':
+                cube_transform = cube_transform.times(Mat4.rotation(-Math.PI/2, 0, 1, 0));
+                break;
+            case 'left':
+                cube_transform = cube_transform.times(Mat4.rotation(Math.PI, 0, 1, 0));
+                break;
+            case 'right':
+                break;
+            default:
+                break;
+        }
+
+        // Draw the rat, step every 1/4 second
+        let t = program_state.animation_time / 250;
+        if (t % 2 < 1) {
+            this.shapes.rat_left_step.draw(context, program_state, cube_transform, this.materials.ratTexture);
+        } else {
+            this.shapes.rat_right_step.draw(context, program_state, cube_transform, this.materials.ratTexture);
+        }
+
+        //this.shapes.rat.draw(context, program_state, cube_transform, this.materials.plastic);
+        //this.add_boundary(cube_transform);
+    }
+
     display(context, program_state) {
         super.display(context, program_state);
         // since walls are bricks, this represents 7 x 7 x height blocks
@@ -194,6 +246,14 @@ export class MazeGame extends Base_Scene {
         let ceiling_transform = Mat4.identity();
 
         const t = this.t = program_state.animation_time / 3000;
+
+        // draw the mob
+        this.mob.move(this.grid);
+        const mobPosition = this.mob.getPosition();
+        const mobDirection = this.mob.getDirection();
+        this.draw_mob(context, program_state, model_transform, this.wall_length, mobPosition, mobDirection);
+
+        // draw the maze
         this.draw_walls(context, program_state, model_transform, this.wall_length);
         this.draw_border(context, program_state, this.wall_length);
         floor_transform = floor_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0))
