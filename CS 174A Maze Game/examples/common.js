@@ -44,13 +44,40 @@ const Square = defs.Square =
         // to re-use data of the common vertices between triangles.  This makes all the vertex
         // arrays (position, normals, etc) smaller and more cache friendly.
         constructor() {
-            super("position", "normal", "texture_coord");
+            super("position", "normal", "texture_coord", "tangents");
             // Specify the 4 square corner locations, and match those up with normal vectors:
             this.arrays.position = Vector3.cast([-1, -1, 0], [1, -1, 0], [-1, 1, 0], [1, 1, 0]);
             this.arrays.normal = Vector3.cast([0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1]);
+
             // Arrange the vertices into a square shape in texture space too:
             this.arrays.texture_coord = Vector.cast([0, 0], [1, 0], [0, 1], [1, 1]);
             // Use two triangles this time, indexing into four distinct vertices:
+
+            let edge1 = vec3(-1, -1, 0).minus(vec3(-1, 1, 0));
+            let edge2 = vec3(1, -1, 0).minus(vec3(-1, 1, 0));
+            let deltaUV1 = vec(0, 0).minus(vec(0, 1));
+            let deltaUV2 = vec(1, 0).minus(vec(0, 1));
+
+            let f = 1.0/ (deltaUV1[0] * deltaUV2[1] - deltaUV2[0] * deltaUV1[1]);
+
+            let tangent1x = f * (deltaUV2[1] * edge1[0] - deltaUV1[1] * edge2[0]);
+            let tangent1y = f * (deltaUV2[1] * edge1[1] - deltaUV1[1] * edge2[1]);
+            let tangent1z = f * (deltaUV2[1] * edge1[2] - deltaUV1[1] * edge2[2]);
+
+            let edge3 = vec3(1, 1, 0).minus(vec3(-1, 1, 0));
+            let deltaUV3 = vec(1, 1).minus(vec(0, 1));
+
+            let g = 1.0/ (deltaUV3[0] * deltaUV2[1] - deltaUV2[0] * deltaUV3[1]);
+
+            let tangent2x = g * (deltaUV2[1] * edge3[0] - deltaUV3[1] * edge2[0]);
+            let tangent2y = g * (deltaUV2[1] * edge3[1] - deltaUV3[1] * edge2[1]);
+            let tangent2z = g * (deltaUV2[1] * edge3[2] - deltaUV3[1] * edge2[2]);
+
+            this.arrays.tangents = Vector3.cast([tangent1x, tangent1y, tangent1z],
+                [(tangent1x + tangent2x)/2, (tangent1y + tangent2y)/2, (tangent1z + tangent2z)/2],
+                [(tangent1x + tangent2x)/2, (tangent1y + tangent2y)/2, (tangent1z + tangent2z)/2],
+                [tangent2x, tangent2y, tangent2z]);
+
             this.indices.push(0, 1, 2, 1, 3, 2);
         }
     }
@@ -141,7 +168,7 @@ const Cube = defs.Cube =
         // out of other Shapes).  A cube inserts six Square strips into its own arrays, using six
         // different matrices as offsets for each square.
         constructor() {
-            super("position", "normal", "texture_coord");
+            super("position", "normal", "texture_coord", "tangents");
             // Loop 3 times (for each axis), and inside loop twice (for opposing cube sides):
             for (let i = 0; i < 3; i++)
                 for (let j = 0; j < 2; j++) {
@@ -590,14 +617,15 @@ const Phong_Shader = defs.Phong_Shader =
                 uniform vec4 light_positions_or_vectors[N_LIGHTS], light_colors[N_LIGHTS];
                 uniform float light_attenuation_factors[N_LIGHTS];
                 uniform vec4 shape_color;
-                uniform vec3 squared_scale, camera_center;
-        
+                uniform vec3 squared_scale, camera_center, camera_direction;
+                float u_limit = .97;
+                
                 // Specifier "varying" means a variable's final value will be passed from the vertex shader
                 // on to the next phase (fragment shader), then interpolated per-fragment, weighted by the
                 // pixel fragment's proximity to each of the 3 vertices (barycentric interpolation).
                 varying vec3 N, vertex_worldspace;
                 // ***** PHONG SHADING HAPPENS HERE: *****                                       
-                vec3 phong_model_lights( vec3 N, vec3 vertex_worldspace ){                                        
+                vec3 phong_model_lights( vec3 N, vec3 vertex_worldspace){                                        
                     // phong_model_lights():  Add up the lights' contributions.
                     vec3 E = normalize( camera_center - vertex_worldspace );
                     vec3 result = vec3( 0.0 );
@@ -611,7 +639,13 @@ const Phong_Shader = defs.Phong_Shader =
                         vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz - 
                                                        light_positions_or_vectors[i].w * vertex_worldspace;                                             
                         float distance_to_light = length( surface_to_light_vector );
-        
+
+                        // added circular center for light with blend factor
+                        vec3 u_lightDirection = normalize(camera_direction);
+                        vec3 surfaceToLightDirection = normalize(surface_to_light_vector);
+                        float dotFromDirection = dot(surfaceToLightDirection, -u_lightDirection);
+                        float blend_factor = smoothstep(u_limit - 0.03, u_limit, dotFromDirection);
+
                         vec3 L = normalize( surface_to_light_vector );
                         vec3 H = normalize( L + E );
                         // Compute the diffuse and specular components from the Phong
@@ -622,7 +656,7 @@ const Phong_Shader = defs.Phong_Shader =
                         
                         vec3 light_contribution = shape_color.xyz * light_colors[i].xyz * diffusivity * diffuse
                                                                   + light_colors[i].xyz * specularity * specular;
-                        result += attenuation * light_contribution;
+                        result += attenuation * mix(vec3(0.0), light_contribution, blend_factor);
                       }
                     return result;
                   } `;
@@ -655,7 +689,7 @@ const Phong_Shader = defs.Phong_Shader =
                     // Compute an initial (ambient) color:
                     gl_FragColor = vec4( shape_color.xyz * ambient, shape_color.w );
                     // Compute the final color with contributions from lights:
-                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
+                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace);
                   } `;
         }
 
@@ -672,7 +706,12 @@ const Phong_Shader = defs.Phong_Shader =
         send_gpu_state(gl, gpu, gpu_state, model_transform) {
             // send_gpu_state():  Send the state of our whole drawing context to the GPU.
             const O = vec4(0, 0, 0, 1), camera_center = gpu_state.camera_transform.times(O).to3();
-            gl.uniform3fv(gpu.camera_center, camera_center);
+            gl.uniform3fv(gpu.camera_center, camera_center)
+
+            // added sending the eye vector to GPU
+            const E = vec4(0, 0, -1, 0), inverse_camera_direction = gpu_state.camera_transform.times(E).to3()
+            gl.uniform3fv(gpu.camera_direction, inverse_camera_direction);
+            
             // Use the squared scale trick from "Eric's blog" instead of inverse transpose matrix:
             const squared_scale = model_transform.reduce(
                 (acc, r) => {
@@ -761,7 +800,7 @@ const Textured_Phong = defs.Textured_Phong =
                                                                              // Compute an initial (ambient) color:
                     gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
                                                                              // Compute the final color with contributions from lights:
-                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
+                    gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace);
                   } `;
         }
 
@@ -798,10 +837,136 @@ const Fake_Bump_Map = defs.Fake_Bump_Map =
                     // Compute an initial (ambient) color:
                     gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
                     // Compute the final color with contributions from lights:
-                    gl_FragColor.xyz += phong_model_lights( normalize( bumped_N ), vertex_worldspace );
+                    gl_FragColor.xyz += phong_model_lights( normalize( bumped_N ), vertex_worldspace);
                   } `;
         }
     }
+
+const Normal_Map = defs.Normal_Map =
+    class Normal_Map extends Textured_Phong {
+        // **Normal_Map** Extends Textured_Phong, and implements normal mapping
+        vertex_glsl_code() {
+            // ********* VERTEX SHADER *********
+            return this.shared_glsl_code() + `
+                varying vec2 f_tex_coord;
+                attribute vec3 position, normal, tangents;                            
+                // Position is expressed in object coordinates.
+                attribute vec2 texture_coord;
+                
+                uniform mat4 model_transform;
+                uniform mat4 projection_camera_model_transform;
+                
+                varying vec3 T;
+                varying vec3 B;
+        
+                void main(){                                                                   
+                    // The vertex's final resting place (in NDCS):
+                    gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
+                    // The final normal vector in screen space.
+                    N = normalize( mat3( model_transform ) * normal / squared_scale);
+                    T = normalize( mat3( model_transform ) * tangents / squared_scale);
+                    B = normalize( mat3( model_transform ) * cross(N, T));
+                    
+                    vertex_worldspace = ( model_transform * vec4( position, 1.0 ) ).xyz;
+                    // Turn the per-vertex texture coordinate into an interpolated variable.
+                    f_tex_coord = texture_coord;
+                  } `;
+        }
+        /*
+        varying vec3 new_cam_cent, new_cam_dir;
+                varying vec4 new_light_pos[N_LIGHTS];
+
+                T = normalize( mat3( model_transform ) * tangents / squared_scale);
+
+
+        T = normalize( mat3( model_transform ) * cross(vec3(0.0, 1.0, 0.0), N));
+                        if (T == vec3(0.0, 0.0, 0.0)){
+                            T = normalize( mat3( model_transform ) * cross(vec3(1.0, 0.0, 0.0), N));
+                        }
+
+                        mat3 TBN = mat3 (T, B, N);
+
+                    norm *= TBN;
+
+         mat3 TBN = mat3 (vec3(T.x, B.x, N.x), vec3(T.y, B.y, N.y), vec3(T.z, B.z, N.z));
+
+                    new_cam_cent = TBN * camera_center;
+                    new_cam_dir = TBN * camera_direction;
+                    vec3 new_pos = TBN * position;
+                    for (int i = 0; i < N_LIGHTS; i++) {
+                        new_light_pos[i] = vec4(TBN * light_positions_or_vectors[i].xyz, light_positions_or_vectors[i].w);
+                    }
+         */
+
+        fragment_glsl_code() {
+            // ********* FRAGMENT SHADER *********
+            // A fragment is a pixel that's overlapped by the current triangle.
+            // Fragments affect the final image or get discarded due to depth.
+            return this.shared_glsl_code() + `
+                varying vec2 f_tex_coord;
+                uniform sampler2D texture;
+                uniform sampler2D normalTexture;
+                
+                varying vec3 T;
+                varying vec3 B;
+        
+                void main(){
+                    vec4 tex_color = texture2D( texture, f_tex_coord );
+                    mat3 TBN = mat3(T, B, N);
+                    
+                    vec3 norm = texture2D(normalTexture, f_tex_coord).xyz * 2.0 - 1.0;
+                    norm = normalize(TBN * norm);
+                    
+                    gl_FragColor = vec4( ( tex_color.xyz) * ambient, tex_color.w );
+
+                    vec3 E = normalize( camera_center - vertex_worldspace );
+                    vec3 result = vec3( 0.0 );
+                    for(int i = 0; i < N_LIGHTS; i++){
+                        // Lights store homogeneous coords - either a position or vector.  If w is 0, the
+                        // light will appear directional (uniform direction from all points), and we
+                        // simply obtain a vector towards the light by directly using the stored value.
+                        // Otherwise if w is 1 it will appear as a point light -- compute the vector to
+                        // the point light's location from the current surface point.  In either case,
+                        // fade (attenuate) the light as the vector needed to reach it gets longer.
+                        vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz -
+                                                       light_positions_or_vectors[i].w * vertex_worldspace;
+                        float distance_to_light = length( surface_to_light_vector );
+                        vec3 L = normalize( surface_to_light_vector );
+
+                        // added circular center for light with blend factor
+                        vec3 u_lightDirection = normalize(camera_direction);
+                        float dotFromDirection = dot(L, -u_lightDirection);
+                        float blend_factor = smoothstep(u_limit - 0.03, u_limit, dotFromDirection);
+                        
+                        vec3 H = normalize( L + E );
+                        // Compute the diffuse and specular components from the Phong
+                        // Reflection Model, using Blinn's "halfway vector" method:
+                        float diffuse  =      max( dot( norm, L ), 0.0 );
+                        float specular = pow( max( dot( norm, H ), 0.0 ), smoothness );
+                        float attenuation = 1.25 / (1.0 + light_attenuation_factors[i] * distance_to_light * distance_to_light );
+
+                        vec3 light_contribution = tex_color.xyz * light_colors[i].xyz * diffusivity * diffuse
+                                                                  + light_colors[i].xyz * specularity * specular;
+                        result += attenuation * mix(vec3(0.0), light_contribution, blend_factor);
+                      }
+
+                    gl_FragColor.xyz += result;
+                  } `;
+        }
+        update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
+            // update_GPU(): Add a little more to the base class's version of this method.
+            super.update_GPU(context, gpu_addresses, gpu_state, model_transform, material);
+
+            if (material.normalTexture && material.normalTexture.ready) {
+                context.uniform1i(gpu_addresses.normalTexture, 1);
+                material.normalTexture.activate(context, 1);
+            }
+        }
+    }
+    /*
+
+
+     */
 
 
 const Movement_Controls = defs.Movement_Controls =
@@ -1138,7 +1303,7 @@ const Movement_Controls = defs.Movement_Controls =
             this.first_person_flyaround(dt * r, dt * m, graphics_state);
             this.jump(dt);
             // Log some values:
-            // this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
+            this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
         }
 
     }

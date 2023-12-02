@@ -7,7 +7,7 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
 
-const {Cube, Square, Textured_Phong} = defs
+const {Cube, Textured_Phong, Normal_Map} = defs
 
 class Base_Scene extends Scene {
     /**
@@ -22,7 +22,7 @@ class Base_Scene extends Scene {
         this.shapes = {
             'cube': new Cube(),
             'outerwall': new Cube(),
-            'floor': new Square(),
+            'floor': new Cube(),
             'rat_left_step': new Shape_From_File("assets/ratleft1.obj"),
             'rat_right_step': new Shape_From_File("assets/ratright1.obj"),
         };
@@ -39,32 +39,32 @@ class Base_Scene extends Scene {
                 ambient: 1, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/rattexture.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            innerWallTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 1, diffusivity: 0.1, specularity: 0.1,
-                texture: new Texture("assets/brickwall.jpg", "LINEAR_MIPMAP_LINEAR")
+            innerWallTexture: new Material(new Normal_Map(), {
+                ambient: 0.1, diffusivity: 0.2, specularity: 0.1,
+                texture: new Texture("assets/brickwall.jpg", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/brickwall_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            outerWallTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 1, diffusivity: 0.1, specularity: 0.1,
-                texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR")
+            outerWallTexture: new Material(new Normal_Map(), {
+                ambient: 0.1, diffusivity: 0.3, specularity: 0.3,
+                texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/concretewall_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            floorTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 1, diffusivity: 0.1, specularity: 0.1,
-                texture: new Texture("assets/woodenfloor.jpg", "LINEAR_MIPMAP_LINEAR")
+            floorTexture: new Material(new Normal_Map(), {
+                ambient: 0.1, diffusivity: 0.5, specularity: 0.3,
+                texture: new Texture("assets/woodenfloor.jpg", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/woodenfloor_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
-            ceilingTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 1, diffusivity:1, specularity: 1,
-                texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR")
+            ceilingTexture: new Material(new Normal_Map(), {
+                ambient: 0.1, diffusivity: 0.2, specularity: 1.0,
+                texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR"),
+                normalTexture: new Texture("assets/metalceiling_normal.jpg", "LINEAR_MIPMAP_LINEAR")
+            }),
+            flashlight: new Material(new Textured_Phong(), {
+                color: hex_color("#ffffff"),
+                ambient: 1, diffusivity: 1, specularity: 1,
+                texture: new Texture("assets/FlashlightTexture.png", "LINEAR_MIPMAP_LINEAR")
             }),
         };
-
-        this.colors_array = []
-        for (let i = 0; i < 8; i++) {
-            this.colors_array.push(color(Math.random()*0.5 + 0.25, Math.random()*0.5 + 0.25, Math.random()*0.5 + 0.25, 1.0));
-        }
     }
 
     display(context, program_state) {
@@ -82,9 +82,15 @@ class Base_Scene extends Scene {
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, 1, 100);
 
+        let x = 0
+        if (this.flashlightActive) {
+            x = 500 }
+        else {
+            x = 0 }
+
         // *** Lights: *** Values of vector or point lights.
-        const light_position = vec4(0, 5, 5, 1);
-        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
+        const O = vec4(0, 0, 0, 1), camera_center = program_state.camera_transform.times(O);
+        program_state.lights = [new Light(camera_center, color(1, 1, 1, 1), x)];
     }
 }
 
@@ -126,7 +132,16 @@ export class MazeGame extends Base_Scene {
     }
 
     make_control_panel() {
-        
+        this.key_triggered_button("Toggle Flashlight", ["f"], () => this.toggleFlashlight());
+    }
+
+    // flashlight toggle with clicking sound
+    toggleFlashlight() {
+        this.flashlight_click = new Audio('flashlight-click.mp3');
+        this.flashlight_click.play();
+        setTimeout(() => {
+            this.flashlightActive = !this.flashlightActive;
+        }, 200); 
     }
 
     get_coords_from_transform(transform) {
@@ -243,7 +258,6 @@ export class MazeGame extends Base_Scene {
         // since walls are bricks, this represents 7 x 7 x height blocks
         let model_transform = Mat4.identity();
         let floor_transform = Mat4.identity();
-        let ceiling_transform = Mat4.identity();
 
         const t = this.t = program_state.animation_time / 3000;
 
@@ -258,10 +272,10 @@ export class MazeGame extends Base_Scene {
         this.draw_border(context, program_state, this.wall_length);
         floor_transform = floor_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0))
             .times(Mat4.scale(this.dim_x*this.wall_length/2, this.dim_z*this.wall_length/2, 1))
-            .times(Mat4.translation(1, 1, 0))
+            .times(Mat4.translation(1, 1, 1))
         this.shapes.floor.draw(context, program_state, floor_transform, this.materials.floorTexture);
 
-        ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2));
+        let ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2 - 2));
         this.shapes.floor.draw(context, program_state, ceiling_transform, this.materials.ceilingTexture);
         // store the coordinates of all objects in the program_state!!!
         // then we can access these bounding boxes in common.js
