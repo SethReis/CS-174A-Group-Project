@@ -52,32 +52,33 @@ const Square = defs.Square =
             // Arrange the vertices into a square shape in texture space too:
             this.arrays.texture_coord = Vector.cast([0, 0], [1, 0], [0, 1], [1, 1]);
             // Use two triangles this time, indexing into four distinct vertices:
-            this.indices.push(0, 1, 2, 1, 3, 2);
 
-            let edge1 = vec3(-1, -1, 0) - vec3(-1, 1, 0);
-            let edge2 = vec3(1, -1, 0) - vec3(-1, 1, 0);
-            let deltaUV1 = vec(0, 0) - vec(0, 1);
-            let deltaUV2 = vec(1, 0) - vec(0, 1);
+            let edge1 = vec3(-1, -1, 0).minus(vec3(-1, 1, 0));
+            let edge2 = vec3(1, -1, 0).minus(vec3(-1, 1, 0));
+            let deltaUV1 = vec(0, 0).minus(vec(0, 1));
+            let deltaUV2 = vec(1, 0).minus(vec(0, 1));
 
-            let f = 1.0/ (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+            let f = 1.0/ (deltaUV1[0] * deltaUV2[1] - deltaUV2[0] * deltaUV1[1]);
 
-            let tangent1x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-            let tangent1y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-            let tangent1z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+            let tangent1x = f * (deltaUV2[1] * edge1[0] - deltaUV1[1] * edge2[0]);
+            let tangent1y = f * (deltaUV2[1] * edge1[1] - deltaUV1[1] * edge2[1]);
+            let tangent1z = f * (deltaUV2[1] * edge1[2] - deltaUV1[1] * edge2[2]);
 
-            let edge3 = vec3(1, 1, 0) - vec3(-1, 1, 0);
-            let deltaUV3 = vec(1, 1) - vec(0, 1);
+            let edge3 = vec3(1, 1, 0).minus(vec3(-1, 1, 0));
+            let deltaUV3 = vec(1, 1).minus(vec(0, 1));
 
-            let g = 1.0/ (deltaUV3.x * deltaUV2.y - deltaUV2.x * deltaUV3.y);
+            let g = 1.0/ (deltaUV3[0] * deltaUV2[1] - deltaUV2[0] * deltaUV3[1]);
 
-            let tangent2x = g * (deltaUV2.y * edge3.x - deltaUV3.y * edge2.x);
-            let tangent2y = g * (deltaUV2.y * edge3.y - deltaUV3.y * edge2.y);
-            let tangent2z = g * (deltaUV2.y * edge3.z - deltaUV3.y * edge2.z);
+            let tangent2x = g * (deltaUV2[1] * edge3[0] - deltaUV3[1] * edge2[0]);
+            let tangent2y = g * (deltaUV2[1] * edge3[1] - deltaUV3[1] * edge2[1]);
+            let tangent2z = g * (deltaUV2[1] * edge3[2] - deltaUV3[1] * edge2[2]);
 
             this.arrays.tangents = Vector3.cast([tangent1x, tangent1y, tangent1z],
                 [(tangent1x + tangent2x)/2, (tangent1y + tangent2y)/2, (tangent1z + tangent2z)/2],
                 [(tangent1x + tangent2x)/2, (tangent1y + tangent2y)/2, (tangent1z + tangent2z)/2],
                 [tangent2x, tangent2y, tangent2z]);
+
+            this.indices.push(0, 1, 2, 1, 3, 2);
         }
     }
 
@@ -705,6 +706,7 @@ const Phong_Shader = defs.Phong_Shader =
         send_gpu_state(gl, gpu, gpu_state, model_transform) {
             // send_gpu_state():  Send the state of our whole drawing context to the GPU.
             const O = vec4(0, 0, 0, 1), camera_center = gpu_state.camera_transform.times(O).to3();
+            gl.uniform3fv(gpu.camera_center, camera_center)
 
             // added sending the eye vector to GPU
             const E = vec4(0, 0, -1, 0), inverse_camera_direction = gpu_state.camera_transform.times(E).to3()
@@ -913,7 +915,6 @@ const Normal_Map = defs.Normal_Map =
                     mat3 TBN = mat3(T, B, N);
                     
                     vec3 norm = texture2D(normalTexture, f_tex_coord).xyz * 2.0 - 1.0;
-                    norm.y = -norm.y;
                     norm = normalize(TBN * norm);
                     
                     gl_FragColor = vec4( ( tex_color.xyz) * ambient, tex_color.w );
@@ -930,20 +931,19 @@ const Normal_Map = defs.Normal_Map =
                         vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz -
                                                        light_positions_or_vectors[i].w * vertex_worldspace;
                         float distance_to_light = length( surface_to_light_vector );
+                        vec3 L = normalize( surface_to_light_vector );
 
                         // added circular center for light with blend factor
                         vec3 u_lightDirection = normalize(camera_direction);
-                        vec3 surfaceToLightDirection = normalize(surface_to_light_vector);
-                        float dotFromDirection = dot(surfaceToLightDirection, -u_lightDirection);
+                        float dotFromDirection = dot(L, -u_lightDirection);
                         float blend_factor = smoothstep(u_limit - 0.03, u_limit, dotFromDirection);
-
-                        vec3 L = normalize( surface_to_light_vector );
+                        
                         vec3 H = normalize( L + E );
                         // Compute the diffuse and specular components from the Phong
                         // Reflection Model, using Blinn's "halfway vector" method:
-                        float diffuse  =      max( dot( N, L ), 0.0 );
-                        float specular = pow( max( dot( N, H ), 0.0 ), smoothness );
-                        float attenuation = 2.0 / (1.0 + light_attenuation_factors[i] * distance_to_light * distance_to_light );
+                        float diffuse  =      max( dot( norm, L ), 0.0 );
+                        float specular = pow( max( dot( norm, H ), 0.0 ), smoothness );
+                        float attenuation = 1.25 / (1.0 + light_attenuation_factors[i] * distance_to_light * distance_to_light );
 
                         vec3 light_contribution = tex_color.xyz * light_colors[i].xyz * diffusivity * diffuse
                                                                   + light_colors[i].xyz * specularity * specular;
@@ -952,6 +952,15 @@ const Normal_Map = defs.Normal_Map =
 
                     gl_FragColor.xyz += result;
                   } `;
+        }
+        update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
+            // update_GPU(): Add a little more to the base class's version of this method.
+            super.update_GPU(context, gpu_addresses, gpu_state, model_transform, material);
+
+            if (material.normalTexture && material.normalTexture.ready) {
+                context.uniform1i(gpu_addresses.normalTexture, 1);
+                material.normalTexture.activate(context, 1);
+            }
         }
     }
     /*

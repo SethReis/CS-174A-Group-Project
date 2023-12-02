@@ -5,7 +5,7 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture,
 } = tiny;
 
-const {Cube, Square, Textured_Phong, Normal_Map, Fake_Bump_Map} = defs
+const {Cube, Textured_Phong, Normal_Map} = defs
 
 class Base_Scene extends Scene {
     /**
@@ -28,17 +28,17 @@ class Base_Scene extends Scene {
             plastic: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
             innerWallTexture: new Material(new Normal_Map(), {
-                ambient: 0.1, diffusivity: 0.2, specularity: 0.0,
+                ambient: 0.1, diffusivity: 0.2, specularity: 0.1,
                 texture: new Texture("assets/brickwall.jpg", "LINEAR_MIPMAP_LINEAR"),
                 normalTexture: new Texture("assets/brickwall_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
             outerWallTexture: new Material(new Normal_Map(), {
-                ambient: 0.1, diffusivity: 0.3, specularity: 0.0,
+                ambient: 0.1, diffusivity: 0.3, specularity: 0.3,
                 texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR"),
                 normalTexture: new Texture("assets/concretewall_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
             floorTexture: new Material(new Normal_Map(), {
-                ambient: 0.1, diffusivity: 0.5, specularity: 0.0,
+                ambient: 0.1, diffusivity: 0.5, specularity: 0.3,
                 texture: new Texture("assets/woodenfloor.jpg", "LINEAR_MIPMAP_LINEAR"),
                 normalTexture: new Texture("assets/woodenfloor_normal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
@@ -78,7 +78,7 @@ class Base_Scene extends Scene {
             x = 0 }
 
         // *** Lights: *** Values of vector or point lights.
-        const O = vec4(1, 1, 1, 1), camera_center = program_state.camera_transform.times(O);
+        const O = vec4(0, 0, 0, 1), camera_center = program_state.camera_transform.times(O);
         program_state.lights = [new Light(camera_center, color(1, 1, 1, 1), x)];
     }
 }
@@ -207,7 +207,6 @@ export class MazeGame extends Base_Scene {
         // since walls are bricks, this represents 7 x 7 x height blocks
         let model_transform = Mat4.identity();
         let floor_transform = Mat4.identity();
-        let ceiling_transform = Mat4.identity();
 
         const t = this.t = program_state.animation_time / 3000;
         this.draw_walls(context, program_state, model_transform, this.wall_length);
@@ -217,7 +216,7 @@ export class MazeGame extends Base_Scene {
             .times(Mat4.translation(1, 1, 1))
         this.shapes.floor.draw(context, program_state, floor_transform, this.materials.floorTexture);
 
-        ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2 - 2));
+        let ceiling_transform = floor_transform.times(Mat4.translation(0, 0, -this.wall_height*2 - 2));
         this.shapes.floor.draw(context, program_state, ceiling_transform, this.materials.ceilingTexture);
         // store the coordinates of all objects in the program_state!!!
         // then we can access these bounding boxes in common.js
