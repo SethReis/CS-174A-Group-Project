@@ -77,7 +77,18 @@ export class Maze {
                 }
             }
         }
-        console.log(grid);
         return grid;
+    }
+
+    getAntiGrid(grid) {
+        let antiGrid = [];
+        for (let i = 0; i < this.rows; i++) {
+            for (let j = 0; j < this.cols; j++) {
+                if (!grid.includes([i, j]))
+                    antiGrid.push([i, j]);
+            }
+        }
+        antiGrid.splice(0, 1); // remove the entrance
+        return antiGrid;
     }
 }

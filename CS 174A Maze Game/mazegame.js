@@ -27,9 +27,6 @@ class Base_Scene extends Scene {
             'rat_right_step': new Shape_From_File("assets/ratright1.obj"),
         };
 
-        // MOB
-        this.mob = new Mob({ x: 0, y: 0, z: 0 }); // Set the initial position of the mob
-
         // *** Materials
         this.materials = {
             plastic: new Material(new defs.Phong_Shader(),
@@ -37,7 +34,7 @@ class Base_Scene extends Scene {
             ratTexture: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
                 ambient: 1, diffusivity: 0.1, specularity: 0.1,
-                texture: new Texture("assets/rattexture.jpg", "LINEAR_MIPMAP_LINEAR")
+                texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
             innerWallTexture: new Material(new Normal_Map(), {
                 ambient: 0.1, diffusivity: 0.2, specularity: 0.1,
@@ -109,6 +106,39 @@ export class MazeGame extends Base_Scene {
         this.wall_length = 11;
         this.maze = new Maze(this.dim_x, this.dim_z);
         this.grid = this.maze.getGrid();
+
+        // deep copy of grid
+        this.grid_with_borders = [];
+        for (let i = 0; i < this.grid.length; i++) {
+            this.grid_with_borders.push(this.grid[i]);
+        }
+        for (let i = -1; i <= 10; i++) {
+            this.grid_with_borders.push([i, -1]);
+            this.grid_with_borders.push([i, 11]);
+            this.grid_with_borders.push([11, i]);
+            this.grid_with_borders.push([-1, i]);
+        }
+
+        this.anti_grid = this.maze.getAntiGrid(this.grid_with_borders); // coordinates of no walls for mobs to spawn
+
+        this.num_mobs = 20;
+
+        // instantiate mobs
+        this.mobs = [];
+        for (let i = 0; i < this.num_mobs; i++) {
+            // pick a random position from the anti-grid
+            const randomIndex = Math.floor(Math.random() * this.anti_grid.length);
+            // get x and z coordinates from the anti-grid
+            const x = this.anti_grid[randomIndex][0];
+            const z = this.anti_grid[randomIndex][1];
+            // remove the coordinates from the anti-grid
+            //this.anti_grid.splice(randomIndex, 1);
+            // instantiate a new mob at the random position
+            const mob = new Mob({ x: x, y: 0, z: z });
+            // add the mob to the array of mobs
+            this.mobs.push(mob);
+        }
+
         this.obj_set = new Set();
         this.objects = [
             // initialize with the outer walls
@@ -213,15 +243,15 @@ export class MazeGame extends Base_Scene {
         this.shapes.outerwall.draw(context, program_state, wall4, this.materials.outerWallTexture);
     }
 
-    draw_mob(context, program_state, model_transform, block_width, position, direction) {
-        let cube_x = position.x * block_width + block_width / 2;
-        let cube_z = position.z * block_width + block_width / 2;
-        let cube_y = block_width / 2;  // This places the base of the rat on the ground
+    draw_mob(context, program_state, model_transform, position, direction) {
+        let cube_x = position.x * this.wall_length + this.wall_length / 2;
+        let cube_z = position.z * this.wall_length + this.wall_length / 2;
+        let cube_y = this.wall_length / 2;  // This places the base of the rat on the ground
 
         // Create the transformation for the rat
         let cube_transform = model_transform
-            .times(Mat4.translation(cube_x, (block_width/4), cube_z))
-            .times(Mat4.scale((block_width/4) / 2, (block_width/4) / 2, (block_width/4) / 2))
+            .times(Mat4.translation(cube_x, (this.wall_length/4), cube_z))
+            .times(Mat4.scale((this.wall_length/4) / 2, (this.wall_length/4) / 2, (this.wall_length/4) / 2))
             .times(Mat4.translation(0, -1.5, 0));
 
         // Depending on the direction, rotate the rat
@@ -244,6 +274,8 @@ export class MazeGame extends Base_Scene {
         // Draw the rat, step every 1/4 second
         let t = program_state.animation_time / 250;
         if (t % 2 < 1) {
+            // draw rat with color black
+
             this.shapes.rat_left_step.draw(context, program_state, cube_transform, this.materials.ratTexture);
         } else {
             this.shapes.rat_right_step.draw(context, program_state, cube_transform, this.materials.ratTexture);
@@ -261,11 +293,19 @@ export class MazeGame extends Base_Scene {
 
         const t = this.t = program_state.animation_time / 3000;
 
-        // draw the mob
-        this.mob.move(this.grid);
-        const mobPosition = this.mob.getPosition();
-        const mobDirection = this.mob.getDirection();
-        this.draw_mob(context, program_state, model_transform, this.wall_length, mobPosition, mobDirection);
+        // draw multiple mobs
+        for (let i = 0; i < this.num_mobs; i++) {
+            const mob = this.mobs[i];
+            mob.move(this.grid_with_borders);
+            const mobPosition = mob.getPosition();
+            const mobDirection = mob.getDirection();
+            this.draw_mob(context, program_state, model_transform, mobPosition, mobDirection);
+            // check if mob collides with player
+            if (mobPosition.x === program_state.camera_transform[0][3] && mobPosition.z === program_state.camera_transform[2][3]) {
+                // if so, reset the game
+                program_state.camera_transform = Mat4.translation(-2.5, -5, -2.5);
+            }
+        }
 
         // draw the maze
         this.draw_walls(context, program_state, model_transform, this.wall_length);
