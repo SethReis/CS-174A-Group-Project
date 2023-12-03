@@ -59,8 +59,8 @@ class Base_Scene extends Scene {
                 texture: new Texture("assets/portal.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
             archTexture: new Material(new Textured_Phong(), {
-                color: hex_color("#000000"),
-                ambient: 0.15, diffusivity: 0.5, specularity: 0.5,
+                color: hex_color("#808080"),
+                ambient: 0.1, diffusivity: 0.5, specularity: 0.3,
                 texture: new Texture("assets/concretewall.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
         };
@@ -127,8 +127,8 @@ export class MazeGame extends Base_Scene {
 
         // Maze floor and wall reset
         for (let i = 0; i < 24; i++) {
-            this.shapes.outerwall.arrays.texture_coord[i] = vec((i % 2) * this.wall_length, Math.floor(i / 2) % 2);
-            this.shapes.floor.arrays.texture_coord[i] = vec((i % 2) * (this.dim_x*2+1), (Math.floor(i / 2) % 2) * (this.dim_x*2+1));
+            this.shapes.outerwall.arrays.texture_coord[i] = vec((i % 2) * 16, Math.floor(i / 2) % 2);
+            this.shapes.floor.arrays.texture_coord[i] = vec((i % 2) * (16*2+1), (Math.floor(i / 2) % 2) * (16*2+1));
         }
     }
 
@@ -252,14 +252,14 @@ export class MazeGame extends Base_Scene {
         const v2_length = (this.dim_z-1)*wall_length;
         let wall1 = Mat4.identity().times(Mat4.translation(h1_length/2, this.wall_height, 0))
                                    .times(Mat4.rotation(rot, 0, 1, 0))
-                                   .times(Mat4.scale(1, this.wall_height, h1_length/2))
+                                       .times(Mat4.scale(1, this.wall_height, 176/2))
         let wall2 = Mat4.identity().times(Mat4.translation(0, this.wall_height, h1_length/2))
-                                   .times(Mat4.scale(1, this.wall_height, v1_length/2))
+                                   .times(Mat4.scale(1, this.wall_height, 176/2))
         let wall3 = Mat4.identity().times(Mat4.translation(h2_length + wall_length, this.wall_height, v2_length/2 ))
-                                   .times(Mat4.scale(1, this.wall_height, v2_length/2))
+                                   .times(Mat4.scale(1, this.wall_height, 176/2))
         let wall4 = Mat4.identity().times(Mat4.translation(h2_length/2 , this.wall_height, v2_length + wall_length))
                                    .times(Mat4.rotation(rot, 0, 1, 0))
-                                   .times(Mat4.scale(1, this.wall_height, h2_length/2))
+                                   .times(Mat4.scale(1, this.wall_height, 176/2))
         this.shapes.outerwall.draw(context, program_state, wall1, this.materials.outerWallTexture);
         this.shapes.outerwall.draw(context, program_state, wall2, this.materials.outerWallTexture);
         this.shapes.outerwall.draw(context, program_state, wall3, this.materials.outerWallTexture);
@@ -304,7 +304,7 @@ export class MazeGame extends Base_Scene {
         this.draw_walls(context, program_state, model_transform, this.wall_length);
         this.draw_border(context, program_state, this.wall_length);
         floor_transform = floor_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0))
-            .times(Mat4.scale(this.dim_x*this.wall_length/2, this.dim_z*this.wall_length/2, 1))
+            .times(Mat4.scale(176/2, 176/2, 1))
             .times(Mat4.translation(1, 1, 1))
         this.shapes.floor.draw(context, program_state, floor_transform, this.materials.floorTexture);
 

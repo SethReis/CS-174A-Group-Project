@@ -1017,31 +1017,6 @@ const Normal_Map = defs.Normal_Map =
                     f_tex_coord = texture_coord;
                   } `;
         }
-        /*
-        varying vec3 new_cam_cent, new_cam_dir;
-                varying vec4 new_light_pos[N_LIGHTS];
-
-                T = normalize( mat3( model_transform ) * tangents / squared_scale);
-
-
-        T = normalize( mat3( model_transform ) * cross(vec3(0.0, 1.0, 0.0), N));
-                        if (T == vec3(0.0, 0.0, 0.0)){
-                            T = normalize( mat3( model_transform ) * cross(vec3(1.0, 0.0, 0.0), N));
-                        }
-
-                        mat3 TBN = mat3 (T, B, N);
-
-                    norm *= TBN;
-
-         mat3 TBN = mat3 (vec3(T.x, B.x, N.x), vec3(T.y, B.y, N.y), vec3(T.z, B.z, N.z));
-
-                    new_cam_cent = TBN * camera_center;
-                    new_cam_dir = TBN * camera_direction;
-                    vec3 new_pos = TBN * position;
-                    for (int i = 0; i < N_LIGHTS; i++) {
-                        new_light_pos[i] = vec4(TBN * light_positions_or_vectors[i].xyz, light_positions_or_vectors[i].w);
-                    }
-         */
 
         fragment_glsl_code() {
             // ********* FRAGMENT SHADER *********
