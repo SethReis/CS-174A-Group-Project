@@ -182,6 +182,7 @@ const Cube = defs.Cube =
         }
     }
 
+// THE FOLLOWING IS COPIED FROM THE "obj-file-demo.js" FILE PROVIDED BY tiny-graphics IN THE ASSIGNMENT CODE
 const Shape_From_File = defs.Shape_From_File =
     class Shape_From_File extends Shape {                                   // **Shape_From_File** is a versatile standalone Shape that imports
                                                                                 // all its arrays' data from an .obj 3D model file.
