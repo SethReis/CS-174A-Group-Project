@@ -346,7 +346,7 @@ export class MazeGame extends Base_Scene {
 
         if (t < 4.5) {
             this.display_text[0] = true;
-            this.display_text[1] = "lose";
+            this.display_text[1] = "welcome";
         }
 
         if (this.display_text[0]) {
