@@ -1426,6 +1426,35 @@ const Scene = tiny.Scene =
             this.key_controls.add(shortcut_combination, press, release);
         }
 
+        standard_button(description, callback, color = '#6E6460',
+                             release_event, recipient = this, parent = this.control_panel) {
+            // key_triggered_button():  Trigger any scene behavior by assigning
+            // a key shortcut and a labelled HTML button to fire any callback
+            // function/method of a Scene.  Optional release callback as well.
+            const button = parent.appendChild(document.createElement("button"));
+            button.default_color = button.style.backgroundColor = color;
+            const press = () => {
+                    Object.assign(button.style, {
+                        'background-color': color,
+                        'z-index': "1", 'transform': "scale(1.5)"
+                    });
+                    callback.call(recipient);
+                },
+                release = () => {
+                    Object.assign(button.style, {
+                        'background-color': button.default_color,
+                        'z-index': "0", 'transform': "scale(1)"
+                    });
+                    if (!release_event) return;
+                    release_event.call(recipient);
+                };
+            button.textContent = description;
+            button.addEventListener("mousedown", press);
+            button.addEventListener("mouseup", release);
+            button.addEventListener("touchstart", press, {passive: true});
+            button.addEventListener("touchend", release, {passive: true});
+        }
+
         // To use class Scene, override at least one of the below functions,
         // which will be automatically called by other classes:
         display(context, program_state) {
