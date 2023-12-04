@@ -1412,6 +1412,7 @@ const Movement_Controls = defs.Movement_Controls =
             this.camera_xz[1] = new_pos[1];
             this.matrix().set(this.camera_xz.times(this.y_rotation));
             this.inverse().set(Mat4.inverse(this.matrix()));
+            const inverse_coords = this.inverse().times(vec4(0, 0, 0, 1)).to3();
             this.pos = this.camera_xz.times(vec4(0, 0, 0, 1)).to3();
         }
 
@@ -1458,3 +1459,40 @@ const Program_State_Viewer = defs.Program_State_Viewer =
             this.program_state = program_state;
         }
     }
+
+const Text_Line = defs.Text_Line =
+    class Text_Line extends Shape {
+        constructor(max_size) {
+            super("position", "normal", "texture_coord", "tangents"); // Include "tangents"
+            this.max_size = max_size;
+            var object_transform = Mat4.identity();
+            for (var i = 0; i < max_size; i++) {
+                defs.Square.insert_transformed_copy_into(this, [], object_transform);
+                object_transform.post_multiply(Mat4.translation(1.5, 0, 0));
+            }
+        }
+
+        set_string(line, context) {    
+        // set_string():  Call this to overwrite the texture coordinates buffer with new
+        // values per quad, which enclose each of the string's characters.
+        this.arrays.texture_coord = [];
+        for (var i = 0; i < this.max_size; i++) {
+            var row = Math.floor((i < line.length ? line.charCodeAt(i) : ' '.charCodeAt()) / 16),
+                col = Math.floor((i < line.length ? line.charCodeAt(i) : ' '.charCodeAt()) % 16);
+
+            var skip = 3, size = 32, sizefloor = size - skip;
+            var dim = size * 16,
+                left = (col * size + skip) / dim, top = (row * size + skip) / dim,
+                right = (col * size + sizefloor) / dim, bottom = (row * size + sizefloor + 5) / dim;
+
+            this.arrays.texture_coord.push(...Vector.cast([left, 1 - bottom], [right, 1 - bottom],
+                [left, 1 - top], [right, 1 - top]));
+        }
+        if (!this.existing) {
+            this.copy_onto_graphics_card(context.context);
+            this.existing = true;
+        } else
+            this.copy_onto_graphics_card(context.context, ["texture_coord"], false);
+    }
+    }
+
