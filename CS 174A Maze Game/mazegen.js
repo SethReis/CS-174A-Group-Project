@@ -84,8 +84,10 @@ export class Maze {
         let antiGrid = [];
         for (let i = 0; i < this.rows; i++) {
             for (let j = 0; j < this.cols; j++) {
-                if (!grid.includes([i, j]))
+                // add coords not found in grid
+                if (!grid.some(([x, y]) => x === i && y === j)) {
                     antiGrid.push([i, j]);
+                }
             }
         }
         antiGrid.splice(0, 1); // remove the entrance

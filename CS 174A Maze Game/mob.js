@@ -4,6 +4,12 @@ export class Mob {
         this.speed = 0.015; // Speed of movement (adjust as needed)
         this.direction = 'right'; // Initial direction of movement
         this.size = 0.15; // Size of the mob (adjust as needed)
+
+        // bounding box
+        this.left = this.position.x;
+        this.right = this.position.x + this.size;
+        this.top = this.position.z - this.size;
+        this.bottom = this.position.z + this.size;
     }
 
     move(wall_array) {
@@ -29,12 +35,11 @@ export class Mob {
         }
 
         // Check for collisions with walls using the wall array
+        let mobLeft, mobRight, mobTop, mobBottom;
         let collided = false;
         for (let i = 0; i < wall_array.length; i++) {
             let wallX = wall_array[i][0]; // x-coordinate of the wall
             let wallZ = wall_array[i][1]; // z-coordinate of the wall
-
-            let mobLeft, mobRight, mobTop, mobBottom;
 
             // Calculate bounds based on direction
             switch (this.direction) {
@@ -88,6 +93,11 @@ export class Mob {
             // If no collision, update the mob's position
             this.position.x = nextX;
             this.position.z = nextZ;
+            // Update the bounding box
+            this.left = mobLeft;
+            this.right = mobRight;
+            this.top = mobTop;
+            this.bottom = mobBottom;
         }
     }
 

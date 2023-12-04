@@ -274,15 +274,19 @@ export class MazeGame extends Base_Scene {
         // Draw the rat, step every 1/4 second
         let t = program_state.animation_time / 250;
         if (t % 2 < 1) {
-            // draw rat with color black
-
             this.shapes.rat_left_step.draw(context, program_state, cube_transform, this.materials.ratTexture);
         } else {
             this.shapes.rat_right_step.draw(context, program_state, cube_transform, this.materials.ratTexture);
         }
 
-        //this.shapes.rat.draw(context, program_state, cube_transform, this.materials.plastic);
-        //this.add_boundary(cube_transform);
+        // WIP-IMPLEMENTATION: Collision detection btw mob and player
+        // const mobBbox = this.get_coords_from_transform(cube_transform);
+        // const playerBbox = this.get_coords_from_transform(program_state.camera_transform);
+        // check if they collide
+        // if (mobBbox[0] < playerBbox[1] && mobBbox[1] > playerBbox[0] && mobBbox[2] < playerBbox[3] && mobBbox[3] > playerBbox[2]) {
+        //      alert("You lose!");
+        //      window.location.reload();
+        // }
     }
 
     display(context, program_state) {
@@ -300,11 +304,6 @@ export class MazeGame extends Base_Scene {
             const mobPosition = mob.getPosition();
             const mobDirection = mob.getDirection();
             this.draw_mob(context, program_state, model_transform, mobPosition, mobDirection);
-            // check if mob collides with player
-            if (mobPosition.x === program_state.camera_transform[0][3] && mobPosition.z === program_state.camera_transform[2][3]) {
-                // if so, reset the game
-                program_state.camera_transform = Mat4.translation(-2.5, -5, -2.5);
-            }
         }
 
         // draw the maze
