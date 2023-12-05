@@ -1186,6 +1186,7 @@ const Movement_Controls = defs.Movement_Controls =
             // retrieve all bounding boxes in the scene
             // a bounding box is of format [x1, x2, y1, y2, z1, z2]
             const objects = graphics_state.bboxes;
+            const mobs = graphics_state.mob_bboxes;
 
             // examine the new position before we apply it, so we can see
             // if a collision is GOING to happen
@@ -1196,6 +1197,17 @@ const Movement_Controls = defs.Movement_Controls =
             // with multiple objects, we need to know which one to
             // prioritize (i.e. the one with the largest overlap area)
             const collisions = [];
+
+            // check if the new position is colliding with any mobs
+            if (this.thrust[0] != 0 || this.thrust[2] != 0) {
+                for (let i = 0; i < mobs.length; i++) {
+                    const mob = mobs[i];
+                    let collide_result = this.get_collision_info(new_pos, mob, c_margin);
+                    if (collide_result != false) {
+                        graphics_state.was_killed = true;
+                    }
+                }
+            }
 
             // check if the new position is colliding with any objects
             if (this.thrust[0] != 0 || this.thrust[2] != 0) {

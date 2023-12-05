@@ -131,13 +131,13 @@ export class MazeGame extends Base_Scene {
             // get x and z coordinates from the anti-grid
             const x = this.anti_grid[randomIndex][0];
             const z = this.anti_grid[randomIndex][1];
-            // remove the coordinates from the anti-grid
-            //this.anti_grid.splice(randomIndex, 1);
             // instantiate a new mob at the random position
             const mob = new Mob({ x: x, y: 0, z: z });
             // add the mob to the array of mobs
             this.mobs.push(mob);
         }
+
+        this.mobs_bboxes = []; // mob bounding boxes
 
         this.obj_set = new Set();
         this.objects = [
@@ -153,6 +153,9 @@ export class MazeGame extends Base_Scene {
             this.shapes.outerwall.arrays.texture_coord[i] = vec((i % 2) * this.wall_length, Math.floor(i / 2) % 2);
             this.shapes.floor.arrays.texture_coord[i] = vec((i % 2) * 25, (Math.floor(i / 2) % 2) * 25);
         }
+
+        // flag if player is still alive
+        this.was_killed = false;
     }
     
     set_colors() {
@@ -278,18 +281,17 @@ export class MazeGame extends Base_Scene {
         } else {
             this.shapes.rat_right_step.draw(context, program_state, cube_transform, this.materials.ratTexture);
         }
-
-        // WIP-IMPLEMENTATION: Collision detection btw mob and player
-        // const mobBbox = this.get_coords_from_transform(cube_transform);
-        // const playerBbox = this.get_coords_from_transform(program_state.camera_transform);
-        // check if they collide
-        // if (mobBbox[0] < playerBbox[1] && mobBbox[1] > playerBbox[0] && mobBbox[2] < playerBbox[3] && mobBbox[3] > playerBbox[2]) {
-        //      alert("You lose!");
-        //      window.location.reload();
-        // }
     }
 
     display(context, program_state) {
+        // check if player is still alive
+        if (this.was_killed) {
+            // reset the game
+            alert("You were killed by a rat! Refresh to restart.");
+            // refresh the page
+            window.location.reload();
+        }
+
         super.display(context, program_state);
         // since walls are bricks, this represents 7 x 7 x height blocks
         let model_transform = Mat4.identity();
@@ -298,12 +300,15 @@ export class MazeGame extends Base_Scene {
         const t = this.t = program_state.animation_time / 3000;
 
         // draw multiple mobs
+        this.mob_bboxes = [];
         for (let i = 0; i < this.num_mobs; i++) {
             const mob = this.mobs[i];
             mob.move(this.grid_with_borders);
             const mobPosition = mob.getPosition();
             const mobDirection = mob.getDirection();
             this.draw_mob(context, program_state, model_transform, mobPosition, mobDirection);
+            const mobBbox = [mob.left, mob.right, 0, 0, mob.top, mob.bottom];
+            this.mob_bboxes.push(mobBbox);
         }
 
         // draw the maze
@@ -321,5 +326,6 @@ export class MazeGame extends Base_Scene {
         // to check for collisions
 
         program_state.bboxes = this.objects;
+        program_state.mob_bboxes = this.mob_bboxes;
     }
 }

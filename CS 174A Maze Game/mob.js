@@ -1,9 +1,9 @@
 export class Mob {
     constructor(startingPosition) {
-        this.position = startingPosition; // Initial position of the mob
-        this.speed = 0.015; // Speed of movement (adjust as needed)
-        this.direction = 'right'; // Initial direction of movement
-        this.size = 0.15; // Size of the mob (adjust as needed)
+        this.position = startingPosition;
+        this.speed = 0.015;
+        this.direction = 'right';
+        this.size = 0.15;
 
         // bounding box
         this.left = this.position.x;
