@@ -32,9 +32,11 @@ class Base_Scene extends Scene {
         this.materials = {
             plastic: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
+
+            // make rat texture dark
             ratTexture: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
-                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                ambient: .2, diffusivity: 0, specularity: 0,
                 texture: new Texture("assets/metalceiling.jpg", "LINEAR_MIPMAP_LINEAR")
             }),
             innerWallTexture: new Material(new Normal_Map(), {
@@ -497,6 +499,8 @@ export class MazeGame extends Base_Scene {
             program_state.won = false;
         }
         if (program_state.was_hit && this.hit_cooldown == 0) {
+            this.mob_bite = new Audio('mob-bite.mp3');
+            this.mob_bite.play();
             this.health = (this.health - 0.3).toFixed(2);
             this.hit_cooldown += 2
             if (this.health <= 0) {
