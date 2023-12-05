@@ -85,6 +85,7 @@ export class Maze {
         for (let i = 0; i < this.rows; i++) {
             for (let j = 0; j < this.cols; j++) {
                 // add coords not found in grid
+                // don't let the rats get near the start
                 if (!grid.some(([x, y]) => x === i && y === j)) {
                     antiGrid.push([i, j]);
                 }
