@@ -1199,13 +1199,16 @@ const Movement_Controls = defs.Movement_Controls =
             const collisions = [];
 
             // check if the new position is colliding with any mobs
-            if (this.thrust[0] != 0 || this.thrust[2] != 0) {
-                for (let i = 0; i < mobs.length; i++) {
-                    const mob = mobs[i];
-                    let collide_result = this.get_collision_info(new_pos, mob, c_margin);
-                    if (collide_result != false) {
-                        graphics_state.was_killed = true;
-                    }
+            const point = new_pos.times(vec4(0, 0, 0, 1)).to3();
+            const camera_box = [
+                point[0] - c_margin, point[0] + c_margin,
+                point[1] - c_margin, point[1] + c_margin,
+                point[2] - c_margin, point[2] + c_margin
+            ];
+            for (let i = 0; i < mobs.length; i++) {
+                const mob = mobs[i];
+                if (this.check_is_collision(camera_box, mob)) {
+                    graphics_state.was_killed = true;
                 }
             }
 
