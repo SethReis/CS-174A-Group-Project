@@ -372,9 +372,9 @@ export class MazeGame extends Base_Scene {
         switch (direction) {
             case 'up':
             case 'left':
-                return [cube_x - 1, cube_x + 1, 0, 5, cube_z - 2, cube_z + 2];
+                return [cube_x - 1, cube_x + 1, 0, 4, cube_z - 2, cube_z + 2];
             default:
-                return [cube_x - 2, cube_x + 2, 0, 5, cube_z - 1, cube_z + 1];
+                return [cube_x - 2, cube_x + 2, 0, 4, cube_z - 1, cube_z + 1];
         }
     }
 
