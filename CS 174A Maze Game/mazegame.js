@@ -140,7 +140,7 @@ export class MazeGame extends Base_Scene {
         this.best_time = undefined;
         this.maze = new Maze(this.dim_x, this.dim_z);
         this.grid = this.maze.getGrid();
-        this.instantiate_mobs();
+        this.instantiate_mobs(this.dim_x);
 
         this.obj_set = new Set();
         this.objects = [
@@ -162,7 +162,7 @@ export class MazeGame extends Base_Scene {
         this.was_hit = false;
     }
 
-    instantiate_mobs() {
+    instantiate_mobs(rat_count) {
         // deep copy of grid
         this.grid_with_borders = [];
         for (let i = 0; i < this.grid.length; i++) {
@@ -177,7 +177,7 @@ export class MazeGame extends Base_Scene {
 
         this.anti_grid = this.maze.getAntiGrid(this.grid_with_borders); // coordinates of no walls for mobs to spawn
 
-        this.num_mobs = 20;
+        this.num_mobs = rat_count;
 
         // instantiate mobs
         this.mobs = [];
@@ -214,7 +214,7 @@ export class MazeGame extends Base_Scene {
         this.maze_was_reset = true;
         this.hit_cooldown = 0;
         this.health = 1;
-        this.instantiate_mobs();
+        this.instantiate_mobs(dim_x);
 
         // TODO: fix maze floor and wall reset on dimension change
     }
@@ -492,6 +492,7 @@ export class MazeGame extends Base_Scene {
             // use this.draw_text(context, program_state, "lose", dt);
             this.last_time = this.time_elapsed.toFixed(2);
             this.time_elapsed = 0;
+            this.health = 1;
             program_state.won = false;
         }
         if (program_state.was_hit && this.hit_cooldown == 0) {
