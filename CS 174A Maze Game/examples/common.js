@@ -1208,6 +1208,7 @@ const Movement_Controls = defs.Movement_Controls =
             for (let i = 0; i < mobs.length; i++) {
                 const mob = mobs[i];
                 if (this.check_is_collision(camera_box, mob)) {
+                    console.log("Collision with mob!")
                     graphics_state.was_killed = true;
                 }
             }

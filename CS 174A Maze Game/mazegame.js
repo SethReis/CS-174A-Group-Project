@@ -281,6 +281,14 @@ export class MazeGame extends Base_Scene {
         } else {
             this.shapes.rat_right_step.draw(context, program_state, cube_transform, this.materials.ratTexture);
         }
+        
+        switch (direction) {
+            case 'up':
+            case 'left':
+                return [cube_x - 1, cube_x + 1, 0, 5, cube_z - 2, cube_z + 2];
+            default:
+                return [cube_x - 2, cube_x + 2, 0, 5, cube_z - 1, cube_z + 1];
+        }
     }
 
     display(context, program_state) {
@@ -301,14 +309,13 @@ export class MazeGame extends Base_Scene {
 
         // draw multiple mobs
         this.mob_bboxes = [];
-        for (let i = 0; i < this.num_mobs; i++) {
+        for (let i = 0; i < this.mobs.length; i++) {
             const mob = this.mobs[i];
             mob.move(this.grid_with_borders);
             const mobPosition = mob.getPosition();
             const mobDirection = mob.getDirection();
-            this.draw_mob(context, program_state, model_transform, mobPosition, mobDirection);
-            const mobBbox = [mob.left, mob.right, 0, 0, mob.top, mob.bottom];
-            this.mob_bboxes.push(mobBbox);
+            const coords = this.draw_mob(context, program_state, model_transform, mobPosition, mobDirection);
+            this.mob_bboxes.push(coords);
         }
 
         // draw the maze
