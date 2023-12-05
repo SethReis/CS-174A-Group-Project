@@ -174,6 +174,7 @@ export class MazeGame extends Base_Scene {
             this.grid_with_borders.push([11, i]);
             this.grid_with_borders.push([-1, i]);
         }
+        this.grid_with_borders.push([0, 0]);
 
         this.anti_grid = this.maze.getAntiGrid(this.grid_with_borders); // coordinates of no walls for mobs to spawn
 
