@@ -455,17 +455,20 @@ export class MazeGame extends Base_Scene {
         const t = this.t = program_state.animation_time / 1000;
         const dt = program_state.animation_delta_time / 1000;
 
+        // display welcome text upon logging on
         if (t < 4.5) {
             this.display_text[0] = true;
             this.display_text[1] = "welcome";
         }
 
+        // decrement from the hit cooldown
         if (this.hit_cooldown > 0) {
             this.hit_cooldown -= dt;
         } else {
             this.hit_cooldown = 0;
         }
 
+        // increment time text is being displayed. 4.5 seconds
         if (this.display_text[0]) {
             this.display_text[2] += dt;
         }
@@ -498,7 +501,6 @@ export class MazeGame extends Base_Scene {
                 this.display_text[0] = true;
                 this.display_text[1] = "lose";
                 this.reset_maze(this.dim_x, this.dim_z);
-                this.time_elapsed = 0;
 
             }
             program_state.was_hit = false;
