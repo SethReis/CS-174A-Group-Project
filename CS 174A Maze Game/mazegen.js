@@ -79,4 +79,19 @@ export class Maze {
         }
         return grid;
     }
+
+    getAntiGrid(grid) {
+        let antiGrid = [];
+        for (let i = 0; i < this.rows; i++) {
+            for (let j = 0; j < this.cols; j++) {
+                // add coords not found in grid
+                // don't let the rats get near the start
+                if (!grid.some(([x, y]) => x === i && y === j)) {
+                    antiGrid.push([i, j]);
+                }
+            }
+        }
+        antiGrid.splice(0, 1); // remove the entrance
+        return antiGrid;
+    }
 }
