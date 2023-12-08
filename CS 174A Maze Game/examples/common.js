@@ -1130,6 +1130,11 @@ const Movement_Controls = defs.Movement_Controls =
                 this.thrust[1] = -1.5*(Math.sin(this.jumpTime * 15));
                 // stop jumping if we are on the ground
                 if (prev_thrust > 0 && this.thrust[1] < 0) {
+                    // noise when player lands on ground
+                    this.thump = new Audio('thump.mp3');
+                    this.thump.play()
+                    this.thump.volume = 0.4;
+                    
                     this.thrust[1] = 0;
                     this.isJumping = false;
                     this.jumpTime = 0;
@@ -1215,15 +1220,39 @@ const Movement_Controls = defs.Movement_Controls =
             this.new_line();
 
             this.key_triggered_button("Up", [" "], () => this.isJumping = true);
-            this.key_triggered_button("Forward", ["w"], () => this.thrust[2] = 1, undefined, () => this.thrust[2] = 0);
+            this.key_triggered_button("Forward", ["w"], () => {
+                this.thrust[2] = 1
+                this.isWalkingforward = true;
+            }, undefined, () => {
+                this.thrust[2] = 0
+                this.isWalkingforward = false;
+            });
             this.new_line();
-            this.key_triggered_button("Left", ["a"], () => this.thrust[0] = 1, undefined, () => this.thrust[0] = 0);
-            this.key_triggered_button("Back", ["s"], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0);
-            this.key_triggered_button("Right", ["d"], () => this.thrust[0] = -1, undefined, () => this.thrust[0] = 0);
+            this.key_triggered_button("Left", ["a"], () => {
+                this.thrust[0] = 1
+                this.isWalkingleft = true;
+            }, undefined, () => {
+                this.thrust[0] = 0
+                this.isWalkingleft = false;
+            });
+            this.key_triggered_button("Back", ["s"], () => {
+                this.thrust[2] = -1
+                this.isWalkingbackward = true;
+            }, undefined, () => {
+                this.thrust[2] = 0
+                this.isWalkingbackward = false;
+            });
+            this.key_triggered_button("Right", ["d"], () => {
+                this.thrust[0] = -1
+                this.isWalkingright = true;
+            }, undefined, () => {
+                this.thrust[0] = 0
+                this.isWalkingright = false;
+            });
             this.new_line();
             // this.key_triggered_button("Down", ["Shift"], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0);
 
-            
+            /*
             const speed_controls = this.control_panel.appendChild(document.createElement("span"));
             speed_controls.style.margin = "30px";
             this.key_triggered_button("-", ["o"], () =>
@@ -1234,7 +1263,7 @@ const Movement_Controls = defs.Movement_Controls =
             this.key_triggered_button("+", ["p"], () =>
                 this.speed_multiplier *= 1.2, undefined, undefined, undefined, speed_controls);
             this.new_line();
-
+            */
 
             // added sensitivity slider
             const sensitivity_controls = this.control_panel.appendChild(document.createElement("span"));
@@ -1252,6 +1281,28 @@ const Movement_Controls = defs.Movement_Controls =
             sensitivity_controls.appendChild(this.sensitivity_slider);
             this.new_line();
             
+        }
+
+        playWalkingSound() {
+            const isWalking = this.isWalkingforward || this.isWalkingbackward || this.isWalkingleft || this.isWalkingright
+
+            // activates footsteps.mp3 when wasd is pressed, pauses when jumping or standing still
+            if (isWalking && !this.isJumping) {
+                if (!this.walkSound) {
+                    this.walkSound = new Audio('footsteps.mp3');
+                    this.walkSound.volume = 0.5;
+                }           
+                if (this.walkSound.paused) {
+                    this.walkSound.play();
+                }
+                if (this.walkSound.ended)
+                {
+                    this.walkSound.currentTime = 0;
+                }
+            }       
+            else if (this.walkSound && !this.walkSound.paused) {
+                this.walkSound.pause();
+            }
         }
 
         check_is_collision(b1, b2) {
@@ -1456,6 +1507,8 @@ const Movement_Controls = defs.Movement_Controls =
             this.jump(dt);
             // Log some values:
             this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
+            // call function to play walking noise
+            this.playWalkingSound();
         }
 
     }
