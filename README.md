@@ -19,7 +19,7 @@ Toggle the flashlight off/on with a sound cue by pressing the ‘F’ key.
 
 Easy, Medium, and Hard buttons on the control panel to generate a new maze with varying difficulty.
 
-Adjust mouse sensitivity under Movement Controls
+Adjust mouse sensitivity under Movement Controls.
 
 ### Goal
 Get to the portal at the end of the maze to record your completion time and get sent back to the beginning.
