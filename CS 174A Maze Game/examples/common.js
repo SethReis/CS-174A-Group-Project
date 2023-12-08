@@ -1282,10 +1282,11 @@ const Movement_Controls = defs.Movement_Controls =
             this.new_line();
             
         }
-        
+
         playWalkingSound() {
             const isWalking = this.isWalkingforward || this.isWalkingbackward || this.isWalkingleft || this.isWalkingright
-    
+
+            // activates footsteps.mp3 when wasd is pressed, pauses when jumping or standing still
             if (isWalking && !this.isJumping) {
                 if (!this.walkSound) {
                     this.walkSound = new Audio('footsteps.mp3');
@@ -1506,6 +1507,8 @@ const Movement_Controls = defs.Movement_Controls =
             this.jump(dt);
             // Log some values:
             this.z_axis = this.inverse().times(vec4(0, 0, 1, 0));
+            // call function to play walking noise
+            this.playWalkingSound();
         }
 
     }
