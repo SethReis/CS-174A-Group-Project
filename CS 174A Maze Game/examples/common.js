@@ -1288,7 +1288,7 @@ const Movement_Controls = defs.Movement_Controls =
     
             if (isWalking && !this.isJumping) {
                 if (!this.walkSound) {
-                    this.walkSound = new Audio('w.mp3');
+                    this.walkSound = new Audio('footsteps.mp3');
                     this.walkSound.volume = 0.5;
                 }           
                 if (this.walkSound.paused) {
