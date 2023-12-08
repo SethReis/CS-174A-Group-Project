@@ -22,11 +22,9 @@ Easy, Medium, and Hard buttons on the control panel to generate a new maze with 
 Adjust mouse sensitivity under Movement Controls.
 
 ### Goal
-Get to the portal at the end of the maze to record your completion time and get sent back to the beginning.
-
-After completing the maze, you will be sent back to the start of the same maze, so try your best to get a better time.
+A Speedrun game! Reach the portal at the end of the maze to record your first completion time. You will be sent back to the start of the same maze to improve your Best Time.
 
 ### Obstacles
-There are many rats strewn about the maze that will damage you if you touch them. Be sure to use your flashlight to pick them out, and watch out for them sneaking up from behind! (There is a sound effect when you are hit.)
+Beware of rats scattered around the maze–they will BITE you if you touch them. Rats are silent and difficult to spot, so be sure to use your flashlight and don’t let them approach you from behind! Luckily, they move rather slowly and are small enough to jump over.
 
-Your health refills after entering the portal and completing the maze, but once you run out of health, you’ll be sent to the start of a new maze. As such, do your best to not get hit if you’re going for a good time.
+You regain health after completing a successful run, but once your health % reaches 0, you’ll be sent to the start of a new maze. As such, do your best to not get hit if you’d like to improve your Best Time.
