@@ -1252,7 +1252,7 @@ const Movement_Controls = defs.Movement_Controls =
             this.new_line();
             // this.key_triggered_button("Down", ["Shift"], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0);
 
-            
+            /*
             const speed_controls = this.control_panel.appendChild(document.createElement("span"));
             speed_controls.style.margin = "30px";
             this.key_triggered_button("-", ["o"], () =>
@@ -1263,7 +1263,7 @@ const Movement_Controls = defs.Movement_Controls =
             this.key_triggered_button("+", ["p"], () =>
                 this.speed_multiplier *= 1.2, undefined, undefined, undefined, speed_controls);
             this.new_line();
-
+            */
 
             // added sensitivity slider
             const sensitivity_controls = this.control_panel.appendChild(document.createElement("span"));
