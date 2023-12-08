@@ -29,4 +29,4 @@ After completing the maze, you will be sent back to the start of the same maze, 
 ### Obstacles
 There are many rats strewn about the maze that will damage you if you touch them. Be sure to use your flashlight to pick them out, and watch out for them sneaking up from behind! (There is a sound effect when you are hit.)
 
-Your health does not refill after entering the portal and completing the maze, and once you run out of health, you’ll be sent to the start of a new maze. As such, do your best to not get hit if you’re going for a good time.
+Your health refills after entering the portal and completing the maze, but once you run out of health, you’ll be sent to the start of a new maze. As such, do your best to not get hit if you’re going for a good time.
