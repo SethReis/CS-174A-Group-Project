@@ -1131,7 +1131,7 @@ const Movement_Controls = defs.Movement_Controls =
                 // stop jumping if we are on the ground
                 if (prev_thrust > 0 && this.thrust[1] < 0) {
                     // noise when player lands on ground
-                    this.thump = new Audio('thump.mp3');
+                    this.thump = new Audio('assets/sounds/thump.mp3');
                     this.thump.play()
                     this.thump.volume = 0.4;
                     
@@ -1289,7 +1289,7 @@ const Movement_Controls = defs.Movement_Controls =
             // activates footsteps.mp3 when wasd is pressed, pauses when jumping or standing still
             if (isWalking && !this.isJumping) {
                 if (!this.walkSound) {
-                    this.walkSound = new Audio('footsteps.mp3');
+                    this.walkSound = new Audio('assets/sounds/footsteps.mp3');
                     this.walkSound.volume = 0.5;
                 }           
                 if (this.walkSound.paused) {

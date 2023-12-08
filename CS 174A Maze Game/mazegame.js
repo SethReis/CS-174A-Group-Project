@@ -260,7 +260,7 @@ export class MazeGame extends Base_Scene {
 
     // flashlight toggle with clicking sound
     toggleFlashlight() {
-        this.flashlight_click = new Audio('flashlight-click.mp3');
+        this.flashlight_click = new Audio('assets/sounds/flashlight-click.mp3');
         this.flashlight_click.play();
         setTimeout(() => {
             this.flashlightActive = !this.flashlightActive;
@@ -483,6 +483,8 @@ export class MazeGame extends Base_Scene {
 
         super.display(context, program_state);
         if (program_state.won == true) {
+            let win_sound = new Audio('assets/sounds/win.wav');
+            win_sound.play();
             this.win_count += 1;
             this.display_text[0] = true;
             if (this.best_time == undefined || this.time_elapsed < this.best_time) {
@@ -499,13 +501,15 @@ export class MazeGame extends Base_Scene {
             program_state.won = false;
         }
         if (program_state.was_hit && this.hit_cooldown == 0) {
-            this.mob_bite = new Audio('mob-bite.mp3');
+            this.mob_bite = new Audio('assets/sounds/mob-bite.mp3');
             this.mob_bite.play();
             this.health = (this.health - 0.3).toFixed(2);
             this.hit_cooldown += 2
             if (this.health <= 0) {
                 this.display_text[0] = true;
                 this.display_text[1] = "lose";
+                let lose_sound = new Audio('assets/sounds/loss.wav');
+                lose_sound.play();
                 this.reset_maze(this.dim_x, this.dim_z);
 
             }
